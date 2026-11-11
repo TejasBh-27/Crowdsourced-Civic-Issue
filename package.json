@@ -1,0 +1,14 @@
+{
+  "name": "civicpulse-app-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CivicPulse Root Workspace Runner",
+  "scripts": {
+    "dev": "npm --prefix CivicPulse run dev",
+    "dev:frontend": "npm --prefix CivicPulse run dev",
+    "dev:backend": "npm --prefix CivicPulse/backend run dev",
+    "build:frontend": "npm --prefix CivicPulse run build",
+    "build:backend": "npm --prefix CivicPulse/backend run build",
+    "start": "start-all.bat"
+  }
+}
