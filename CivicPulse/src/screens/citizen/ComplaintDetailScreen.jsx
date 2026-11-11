@@ -127,10 +127,11 @@ export default function ComplaintDetailScreen({ navigation }) {
           assignedOfficer={item.assignedOfficer}
           resolutionNote={item.resolutionNote}
           mttrHours={item.mttrHours}
+          rejectionReason={item.rejectionReason || item.aiInspection?.rejectionReason}
         />
 
         {/* Resubmit Photo Section — only when photo rejected */}
-        {isRejected && (
+        {isRejected && item.status !== 'Rejected' && (
           <Card style={{ backgroundColor: '#FEF2F2', borderColor: '#FCA5A5', marginBottom: '16px' }}>
             <div style={{ fontSize: '14px', fontWeight: '800', color: COLORS.rejected, marginBottom: '6px' }}>
               ⚠️ Action Required: Upload a Clearer Photo

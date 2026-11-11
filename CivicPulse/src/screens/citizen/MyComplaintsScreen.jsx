@@ -503,6 +503,7 @@ export default function MyComplaintsScreen({ navigation }) {
                   assignedOfficer={item.assignedOfficer}
                   resolutionNote={item.resolutionNote}
                   mttrHours={item.mttrHours}
+                  rejectionReason={item.rejectionReason || item.aiInspection?.rejectionReason}
                 />
 
                 {/* 3. Action Bar / Quick Links */}

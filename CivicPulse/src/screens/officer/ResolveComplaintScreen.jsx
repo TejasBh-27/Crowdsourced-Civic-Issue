@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { resolveComplaint, acceptComplaintTask } from '../../store/slices/complaintSlice';
+import { resolveComplaint, acceptComplaintTask, rejectComplaintTask } from '../../store/slices/complaintSlice';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import StatusBadge from '../../components/StatusBadge';
@@ -13,6 +13,7 @@ import { COMPLAINT_STATUS } from '../../constants/api';
 const STATUS_OPTIONS = [
   { value: COMPLAINT_STATUS.IN_PROGRESS, label: '⚙️ In Progress', desc: 'Field crew dispatched', color: '#8B5CF6', bg: '#EDE9FE' },
   { value: COMPLAINT_STATUS.RESOLVED, label: '✅ Mark Resolved', desc: 'Work completed', color: '#059669', bg: '#D1FAE5' },
+  { value: 'Rejected', label: '❌ Reject Task', desc: 'Admin rejection with reason', color: '#DC2626', bg: '#FEE2E2' },
 ];
 
 export default function ResolveComplaintScreen({ navigation }) {
@@ -70,6 +71,23 @@ export default function ResolveComplaintScreen({ navigation }) {
       department: user?.department || 'Roads & Infrastructure'
     };
 
+    if (selectedStatus === 'Rejected') {
+      if (resolutionNote.trim().length < 5) {
+        alert('Please provide a detailed rejection description explaining why the task was rejected (minimum 5 characters).');
+        return;
+      }
+      const result = await dispatch(rejectComplaintTask({
+        id: item.id,
+        reason: resolutionNote.trim(),
+        officerInfo
+      }));
+      if (rejectComplaintTask.fulfilled.match(result)) {
+        alert(`🛑 Complaint #${item.id} Rejected!\n\nRejection description has been recorded and delivered to the citizen.`);
+        navigation.navigate('OfficerHome');
+      }
+      return;
+    }
+
     if (selectedStatus === COMPLAINT_STATUS.IN_PROGRESS && item.status === 'Verified_Assigned') {
       await dispatch(acceptComplaintTask({ id: item.id, officerInfo }));
     }
@@ -83,7 +101,6 @@ export default function ResolveComplaintScreen({ navigation }) {
         resolutionFile: resolutionFile || null
       }));
       if (resolveComplaint.fulfilled.match(result)) {
-        setSubmitted(true);
         alert(`✅ Complaint #${item.id} Resolved!\n\nMTTR: ${result.payload.mttrHours} hours\nFCM Push notification dispatched to citizen.`);
         navigation.navigate('AssignedComplaints');
       }
@@ -243,25 +260,46 @@ export default function ResolveComplaintScreen({ navigation }) {
 
             {/* Notes */}
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '800', color: COLORS.textMuted, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Field Inspection Notes *
+              <div style={{ fontSize: '11px', fontWeight: '800', color: selectedStatus === 'Rejected' ? '#DC2626' : COLORS.textMuted, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {selectedStatus === 'Rejected' ? 'Rejection Description / Reason * (Delivered to citizen)' : 'Field Inspection Notes *'}
               </div>
               <textarea
                 rows={3}
                 className="cp-input"
-                placeholder="e.g. Work crew completed asphalt patching at Main Market Gate. Site cleaned and verified."
+                placeholder={
+                  selectedStatus === 'Rejected'
+                    ? 'Explain clearly why this civic task was rejected by the administration (minimum 5 characters)...'
+                    : 'e.g. Work crew completed asphalt patching at Main Market Gate. Site cleaned and verified.'
+                }
                 value={resolutionNote}
                 onChange={(e) => setResolutionNote(e.target.value)}
-                style={{ resize: 'vertical', lineHeight: 1.5 }}
+                style={{
+                  resize: 'vertical',
+                  lineHeight: 1.5,
+                  borderColor: selectedStatus === 'Rejected' ? '#FCA5A5' : undefined
+                }}
               />
+              {selectedStatus === 'Rejected' && (
+                <div style={{ fontSize: '11px', color: resolutionNote.trim().length < 5 ? '#DC2626' : '#059669', marginTop: '4px' }}>
+                  {resolutionNote.trim().length < 5
+                    ? `Min 5 characters required (${resolutionNote.trim().length}/5)`
+                    : '✓ Valid rejection description provided'}
+                </div>
+              )}
             </div>
 
             <Button
-              title={isSubmitting ? 'Updating & Logging MTTR…' : `💾 Save — Mark as ${selectedStatus === COMPLAINT_STATUS.RESOLVED ? 'Resolved ✅' : 'In Progress ⚙️'}`}
+              title={
+                isSubmitting
+                  ? (selectedStatus === 'Rejected' ? 'Rejecting Task…' : 'Updating & Logging MTTR…')
+                  : (selectedStatus === 'Rejected'
+                      ? '🛑 Confirm & Reject Task'
+                      : `💾 Save — Mark as ${selectedStatus === COMPLAINT_STATUS.RESOLVED ? 'Resolved ✅' : 'In Progress ⚙️'}`)
+              }
               onPress={handleUpdate}
               loading={isSubmitting}
               size="large"
-              variant={selectedStatus === COMPLAINT_STATUS.RESOLVED ? 'success' : 'primary'}
+              variant={selectedStatus === 'Rejected' ? 'danger' : (selectedStatus === COMPLAINT_STATUS.RESOLVED ? 'success' : 'primary')}
             />
           </>
         )}

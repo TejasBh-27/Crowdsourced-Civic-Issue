@@ -193,6 +193,7 @@ function normalizeBackendComplaint(c) {
     description: c.description,
     location: c.location || { type: 'Point', coordinates: [77.2090, 28.6139], address: 'Ward 14' },
     status: mapBackendStatus(c.status),
+    rejectionReason: c.rejectionReason || null,
     urgency: c.urgency || 'medium',
     reportedBy: c.reportedBy || { id: 'CIT-4481', name: 'Ananya Sharma' },
     assignedOfficer: c.assignedOfficer || null,
@@ -254,7 +255,7 @@ function normalizeBackendComplaint(c) {
 function mapBackendStatus(s) {
   const map = {
     submitted: 'Submitted',
-    rejected: 'Rejected_Invalid_Image',
+    rejected: 'Rejected',
     manual_review: 'Submitted',
     verified: 'Verified_Assigned',
     worker_assigned: 'Verified_Assigned',
@@ -512,6 +513,46 @@ export const expressGatewayApi = {
     updated.updatedAt = new Date().toISOString();
     updated.assignedOfficer = officerInfo || updated.assignedOfficer;
     updated.timeline = [...(updated.timeline || []), { status: 'In Progress', note: `Officer ${officerInfo?.name || 'Officer'} accepted task & dispatched crew.`, timestamp: new Date().toISOString() }];
+    list[idx] = updated;
+    saveStoredComplaints(list);
+    return updated;
+  },
+
+  async rejectComplaint(id, reason, officerInfo, user) {
+    const trimmedReason = (reason || '').trim() || 'Task rejected by officer.';
+    try {
+      if (await isBackendOnline()) {
+        const data = await apiPost(`/officer/complaints/${id}/reject`, { reason: trimmedReason }, user);
+        const normalized = normalizeBackendComplaint(data);
+        normalized.status = 'Rejected';
+        normalized.rejectionReason = trimmedReason;
+        const list = getStoredComplaints();
+        const idx = list.findIndex(c => c.id === id);
+        if (idx !== -1) list[idx] = normalized;
+        saveStoredComplaints(list);
+        return normalized;
+      }
+    } catch (e) {
+      console.warn('Backend reject failed, using local storage:', e.message);
+    }
+    await new Promise(r => setTimeout(r, 200));
+    const list = getStoredComplaints();
+    const idx = list.findIndex(c => c.id === id);
+    if (idx === -1) throw new Error('Complaint not found');
+    const updated = { ...list[idx] };
+    updated.status = 'Rejected';
+    updated.rejectionReason = trimmedReason;
+    updated.rejectedAt = new Date().toISOString();
+    updated.updatedAt = new Date().toISOString();
+    if (officerInfo) updated.assignedOfficer = officerInfo;
+    updated.timeline = [
+      ...(updated.timeline || []),
+      {
+        status: 'Rejected',
+        note: `Officer ${officerInfo?.name || 'Admin'} rejected task: ${trimmedReason}`,
+        timestamp: new Date().toISOString()
+      }
+    ];
     list[idx] = updated;
     saveStoredComplaints(list);
     return updated;

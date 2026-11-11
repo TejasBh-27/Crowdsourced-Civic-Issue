@@ -6,6 +6,7 @@ const STATUS_CONFIG = {
   'Verified_Assigned': { bg: '#DBEAFE', color: '#1E3A8A', label: '✅ Verified' },
   'In Progress': { bg: '#EDE9FE', color: '#4C1D95', label: '⚙️ In Progress' },
   'Resolved': { bg: '#D1FAE5', color: '#064E3B', label: '🎉 Resolved' },
+  'Rejected': { bg: '#FEE2E2', color: '#991B1B', label: '❌ Rejected' },
   'Rejected_Invalid_Image': { bg: '#FEE2E2', color: '#7F1D1D', label: '❌ CV Rejected' },
 };
 

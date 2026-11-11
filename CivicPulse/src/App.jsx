@@ -25,6 +25,7 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('Login');
   const [screenParams, setScreenParams] = useState({});
   const [screenHistory, setScreenHistory] = useState([]);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const dispatch = useDispatch();
   const { isAuthenticated, role, user } = useSelector((state) => state.auth);
@@ -48,6 +49,16 @@ function AppContent() {
       }
     }
   }, [isAuthenticated, role, isAppLoading]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showLogoutConfirm) {
+        setShowLogoutConfirm(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showLogoutConfirm]);
 
   const navigation = {
     navigate: (screenName, params = {}) => {
@@ -238,7 +249,7 @@ function AppContent() {
               {/* Logout Button */}
               <button
                 type="button"
-                onClick={() => dispatch(logout())}
+                onClick={() => setShowLogoutConfirm(true)}
                 title="Logout"
                 style={{
                   background: 'none',
@@ -294,6 +305,175 @@ function AppContent() {
             );
           })}
         </nav>
+      )}
+
+      {/* Logout Confirmation Permission Modal */}
+      {showLogoutConfirm && (
+        <div
+          onClick={() => setShowLogoutConfirm(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.72)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            padding: '16px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '20px',
+              maxWidth: '420px',
+              width: '100%',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              border: '1px solid #E2E8F0',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Modal Header Bar */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+              padding: '16px 20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              color: '#FFFFFF'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '18px' }}>🚪</span>
+                <span style={{ fontSize: '15px', fontWeight: '800', letterSpacing: '-0.01em' }}>
+                  Sign Out Confirmation
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px 20px 20px', textAlign: 'center' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                backgroundColor: '#FEE2E2',
+                border: '2px solid #FECACA',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '30px',
+                margin: '0 auto 16px'
+              }}>
+                🚪
+              </div>
+
+              <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '800', color: COLORS.textPrimary }}>
+                Log out of CivicPulse?
+              </h3>
+
+              <p style={{ margin: '0 0 16px', fontSize: '13px', color: COLORS.textSecondary, lineHeight: 1.5 }}>
+                Are you sure you want to log out? You will need to log back in to submit reports, track status, or manage civic tasks.
+              </p>
+
+              {/* User badge */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: '9999px',
+                padding: '5px 14px 5px 6px',
+                marginBottom: '20px'
+              }}>
+                <img
+                  src={user?.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'}
+                  alt="User"
+                  style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }}
+                />
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: COLORS.textPrimary, lineHeight: 1.1 }}>
+                    {user?.name || 'Citizen'}
+                  </div>
+                  <div style={{ fontSize: '10px', color: COLORS.textMuted, textTransform: 'capitalize' }}>
+                    {role === 'officer' ? 'Municipal Officer' : 'Citizen Account'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  style={{
+                    flex: 1,
+                    padding: '11px',
+                    borderRadius: '12px',
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: COLORS.textSecondary,
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogoutConfirm(false);
+                    dispatch(logout());
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '11px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    backgroundColor: '#DC2626',
+                    color: '#FFFFFF',
+                    fontSize: '13px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+                  }}
+                >
+                  <span>🚪</span>
+                  <span>Yes, Log Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

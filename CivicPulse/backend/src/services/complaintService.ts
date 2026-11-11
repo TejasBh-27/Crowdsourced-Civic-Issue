@@ -162,13 +162,15 @@ export function createComplaintService({ repo, ai, notifier, storage, wardRouter
 
   // ---- Officer -------------------------------------------------------------------------------
 
-  const requireOfficer = (user: User): void => { if (user.role !== ROLES.OFFICER) throw forbidden('Officer access only'); };
+  const requireOfficer = (user: User): void => { if (user.role !== ROLES.OFFICER && user.role !== ROLES.ADMIN) throw forbidden('Officer access only'); };
 
   async function ownedByOfficer(user: User, id: string): Promise<Complaint> {
     requireOfficer(user);
     const c = await repo.complaints.getById(id);
     if (!c) throw notFound('Complaint not found');
-    if (c.assignedOfficer?.id !== user.id) throw forbidden('This complaint is not assigned to you');
+    if (user.role === ROLES.OFFICER && c.assignedOfficer && c.assignedOfficer.id !== user.id) {
+      throw forbidden('This complaint is not assigned to you');
+    }
     return c;
   }
 
@@ -219,6 +221,22 @@ export function createComplaintService({ repo, ai, notifier, storage, wardRouter
     return done;
   }
 
+  async function reject(user: User, id: string, reason: string): Promise<Complaint> {
+    await ownedByOfficer(user, id);
+    if (!reason || reason.trim().length < 5) throw badRequest('A rejection reason (min 5 characters) is required');
+    const trimmed = reason.trim();
+    const done = await transition(
+      id,
+      [STATUS.SUBMITTED, STATUS.MANUAL_REVIEW, STATUS.VERIFIED, STATUS.WORKER_ASSIGNED, STATUS.IN_PROGRESS],
+      STATUS.REJECTED,
+      { rejectionReason: trimmed },
+      `Rejected by officer: ${trimmed}`,
+      user.id
+    );
+    await sms(done, `CivicPulse: your report ${id} has been rejected. Reason: ${trimmed}`);
+    return done;
+  }
+
   async function remove(user: User, id: string): Promise<{ success: boolean; id: string }> {
     const c = await repo.complaints.getById(id);
     if (!c) throw notFound('Complaint not found');
@@ -230,5 +248,5 @@ export function createComplaintService({ repo, ai, notifier, storage, wardRouter
     return { success: true, id };
   }
 
-  return { submit, resubmitPhoto, listMine, getForUser, listForOfficer, listWorkers, assignWorker, start, resolve, process, remove };
+  return { submit, resubmitPhoto, listMine, getForUser, listForOfficer, listWorkers, assignWorker, start, resolve, reject, process, remove };
 }

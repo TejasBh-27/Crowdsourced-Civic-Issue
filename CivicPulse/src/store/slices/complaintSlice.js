@@ -61,6 +61,18 @@ export const acceptComplaintTask = createAsyncThunk(
   }
 );
 
+export const rejectComplaintTask = createAsyncThunk(
+  'complaints/rejectTask',
+  async ({ id, reason, officerInfo }, { rejectWithValue, getState }) => {
+    try {
+      const user = getUser(getState);
+      return await expressGatewayApi.rejectComplaint(id, reason, officerInfo, user);
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
+
 export const resolveComplaint = createAsyncThunk(
   'complaints/resolve',
   async ({ id, note, resolutionImage, officerInfo, resolutionFile }, { rejectWithValue, getState }) => {
@@ -175,6 +187,16 @@ const complaintSlice = createSlice({
         storage.setItem(COMPLAINTS_STORAGE_KEY, state.items);
       })
       .addCase(acceptComplaintTask.rejected, (state, action) => { state.isSubmitting = false; state.error = action.payload; })
+
+      .addCase(rejectComplaintTask.pending, (state) => { state.isSubmitting = true; })
+      .addCase(rejectComplaintTask.fulfilled, (state, action) => {
+        state.isSubmitting = false;
+        const idx = state.items.findIndex(c => c.id === action.payload.id);
+        if (idx !== -1) state.items[idx] = action.payload;
+        if (state.selectedComplaint?.id === action.payload.id) state.selectedComplaint = action.payload;
+        storage.setItem(COMPLAINTS_STORAGE_KEY, state.items);
+      })
+      .addCase(rejectComplaintTask.rejected, (state, action) => { state.isSubmitting = false; state.error = action.payload; })
 
       .addCase(resolveComplaint.pending, (state) => { state.isSubmitting = true; })
       .addCase(resolveComplaint.fulfilled, (state, action) => {

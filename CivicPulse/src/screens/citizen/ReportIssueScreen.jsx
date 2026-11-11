@@ -26,6 +26,7 @@ export default function ReportIssueScreen({ route, navigation }) {
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState(preselectedCategory);
+  const [hasUserManuallySelectedCategory, setHasUserManuallySelectedCategory] = useState(Boolean(route?.params?.preselectedCategory));
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState({});
   const [aiStage, setAiStage] = useState(-1);
@@ -51,6 +52,9 @@ export default function ReportIssueScreen({ route, navigation }) {
           const pri = aiFastApi.computePriorityModel(cv, null, title, description, location);
           if (!isCancelled) {
             setMlVerification({ ...cv, priority: pri });
+            if (!hasUserManuallySelectedCategory && cv.mappedCategoryKey && cv.mappedCategoryKey !== category) {
+              setCategory(cv.mappedCategoryKey);
+            }
           }
         } catch (err) {
           console.warn('Scan notice:', err);
@@ -66,7 +70,7 @@ export default function ReportIssueScreen({ route, navigation }) {
     }
     runScan();
     return () => { isCancelled = true; };
-  }, [previewUrl, photoFile, category, title, description]);
+  }, [previewUrl, photoFile, category, title, description, hasUserManuallySelectedCategory]);
 
   const isSubmissionBlocked = Boolean(mlVerification && (mlVerification.isCivicIssue === false || mlVerification.canSubmit === false || mlVerification.isValidImage === false));
 
@@ -386,7 +390,10 @@ export default function ReportIssueScreen({ route, navigation }) {
                 <button
                   key={cat.id}
                   type="button"
-                  onClick={() => setCategory(cat.id)}
+                  onClick={() => {
+                    setCategory(cat.id);
+                    setHasUserManuallySelectedCategory(true);
+                  }}
                   style={{
                     padding: '8px 14px',
                     borderRadius: '9999px',
@@ -647,26 +654,44 @@ export default function ReportIssueScreen({ route, navigation }) {
                   )}
 
                   {!isSubmissionBlocked && mlVerification.categoryStatus === 'MISMATCH' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCategory(mlVerification.mappedCategoryKey);
-                      }}
-                      style={{
-                        marginTop: '4px',
-                        alignSelf: 'flex-start',
-                        backgroundColor: '#D97706',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '5px 12px',
-                        fontSize: '11px',
-                        fontWeight: '800',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🔄 Click to Auto-Switch Category to "{mlVerification.categoryLabel}"
-                    </button>
+                    <div style={{
+                      marginTop: '6px',
+                      padding: '8px 12px',
+                      backgroundColor: '#FFFBEB',
+                      border: '1.5px solid #F59E0B',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px'
+                    }}>
+                      <div style={{ fontSize: '11px', color: '#92400E', fontWeight: '600' }}>
+                        💡 The ML Vision Model scanned your photo and detected <strong>{mlVerification.categoryLabel}</strong>.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategory(mlVerification.mappedCategoryKey);
+                          setHasUserManuallySelectedCategory(true);
+                        }}
+                        style={{
+                          alignSelf: 'flex-start',
+                          backgroundColor: '#D97706',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '6px 14px',
+                          fontSize: '11px',
+                          fontWeight: '800',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 2px 4px rgba(217,119,6,0.25)'
+                        }}
+                      >
+                        <span>🔄</span> Switch Category to "{mlVerification.categoryLabel}" (Recommended)
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

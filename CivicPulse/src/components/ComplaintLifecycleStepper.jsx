@@ -8,8 +8,8 @@ const STAGES = [
   { key: 'Resolved', label: '4. Resolved', icon: '✅', shortDesc: 'Repair verified closed with proof' },
 ];
 
-export default function ComplaintLifecycleStepper({ status, assignedOfficer, resolutionNote, mttrHours }) {
-  const isRejected = status === 'Rejected_Invalid_Image' || status === 'Rejected';
+export default function ComplaintLifecycleStepper({ status, assignedOfficer, resolutionNote, mttrHours, rejectionReason }) {
+  const isRejected = status === 'Rejected_Invalid_Image' || status === 'Rejected' || status === 'rejected';
 
   // Calculate current stage index: 0, 1, 2, or 3
   let currentStageIndex = 0;
@@ -25,41 +25,63 @@ export default function ComplaintLifecycleStepper({ status, assignedOfficer, res
 
   // Rejection alert view
   if (isRejected) {
+    const isOfficerRejected = status === 'Rejected' || status === 'rejected';
     return (
       <div style={{
         marginTop: '10px',
         marginBottom: '10px',
-        padding: '12px 14px',
+        padding: '14px 16px',
         backgroundColor: '#FEF2F2',
         border: '1.5px solid #FCA5A5',
         borderRadius: '14px',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '12px'
+        flexDirection: 'column',
+        gap: '10px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '24px' }}>⚠️</span>
-          <div>
-            <div style={{ fontSize: '12px', fontWeight: '800', color: '#991B1B' }}>
-              Process Paused: Image Clarity Verification Failed
-            </div>
-            <div style={{ fontSize: '11px', color: '#7F1D1D', marginTop: '2px' }}>
-              TensorFlow CV flagged low clarity or blur. Tap "Resubmit Photo" to resume process.
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '24px' }}>❌</span>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: '#991B1B' }}>
+                {isOfficerRejected ? 'Complaint Rejected by Administration' : 'Process Paused: Image Verification Failed'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#7F1D1D', marginTop: '2px' }}>
+                {isOfficerRejected
+                  ? 'The municipal officer/admin has reviewed and rejected this report.'
+                  : 'Image clarity/CV inspection did not pass. Tap "Resubmit Photo" to resume process.'}
+              </div>
             </div>
           </div>
+          <span style={{
+            backgroundColor: '#EF4444',
+            color: '#FFFFFF',
+            padding: '4px 10px',
+            borderRadius: '8px',
+            fontSize: '11px',
+            fontWeight: '800',
+            whiteSpace: 'nowrap'
+          }}>
+            {isOfficerRejected ? 'Rejected' : 'Action Required'}
+          </span>
         </div>
-        <span style={{
-          backgroundColor: '#EF4444',
-          color: '#FFFFFF',
-          padding: '4px 10px',
-          borderRadius: '8px',
-          fontSize: '11px',
-          fontWeight: '800',
-          whiteSpace: 'nowrap'
-        }}>
-          Action Required
-        </span>
+
+        {rejectionReason && (
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            padding: '10px 12px',
+            borderRadius: '10px',
+            border: '1px solid #FECACA',
+            fontSize: '12px',
+            color: '#1F2937'
+          }}>
+            <div style={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#DC2626', marginBottom: '3px' }}>
+              📝 Rejection Description / Reason:
+            </div>
+            <div style={{ color: '#374151', fontSize: '12px', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+              {rejectionReason}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

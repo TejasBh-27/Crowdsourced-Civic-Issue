@@ -65,6 +65,7 @@ const CreateSchema = z.object({
 });
 const AssignSchema = z.object({ workerId: z.string().min(1) });
 const ResolveSchema = z.object({ note: z.string().trim().min(5).max(1000) });
+const RejectSchema = z.object({ reason: z.string().trim().min(5, 'Rejection reason must be at least 5 characters').max(1000) });
 
 const parse = <S extends z.ZodTypeAny>(schema: S, data: unknown): z.infer<S> => {
   const r = schema.safeParse(data);
@@ -132,6 +133,10 @@ export function createApp({ service, config, authMiddleware }: { service: Servic
     res.json(await service.assignWorker(me(req), pid(req), workerId));
   }));
   api.post('/officer/complaints/:id/start', wrap(async (req, res) => res.json(await service.start(me(req), pid(req)))));
+  api.post('/officer/complaints/:id/reject', wrap(async (req, res) => {
+    const { reason } = parse(RejectSchema, req.body);
+    res.json(await service.reject(me(req), pid(req), reason));
+  }));
   api.post('/officer/complaints/:id/resolve', photo, wrap(async (req, res) => {
     const body = parse(ResolveSchema, req.body);
     res.json(await service.resolve(me(req), pid(req), body, req.file));

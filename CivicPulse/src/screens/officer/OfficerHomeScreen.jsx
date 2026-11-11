@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchComplaints, acceptComplaintTask, setSelectedComplaint, fetchMttrAnalytics } from '../../store/slices/complaintSlice';
+import { fetchComplaints, acceptComplaintTask, rejectComplaintTask, setSelectedComplaint, fetchMttrAnalytics } from '../../store/slices/complaintSlice';
 import Card from '../../components/Card';
 import StatusBadge from '../../components/StatusBadge';
 import AiInspectionBadge from '../../components/AiInspectionBadge';
 import COLORS from '../../constants/colors';
+
+const REJECTION_TEMPLATES = [
+  'Duplicate report: This issue is already registered and tracked under another ticket.',
+  'Outside jurisdiction: Issue is on private property or under state/national highway authority.',
+  'Non-civic defect: Does not constitute a municipal civic maintenance violation.',
+  'Already addressed: Field inspection confirms this defect has already been resolved.',
+  'Inadequate information: Provided photo or GPS location does not depict an actionable civic defect.'
+];
 
 const CATEGORY_TABS = [
   { id: 'ALL', label: 'All Categories', icon: '📋' },
@@ -23,6 +31,12 @@ export default function OfficerHomeScreen({ navigation }) {
   const [acceptingId, setAcceptingId] = useState(null);
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+
+  // Rejection modal state
+  const [rejectModalItem, setRejectModalItem] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [rejectError, setRejectError] = useState('');
 
   useEffect(() => {
     dispatch(fetchComplaints());
@@ -56,15 +70,15 @@ export default function OfficerHomeScreen({ navigation }) {
   });
 
   const highPriorityCount = unacceptedItems.filter(i => {
-    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || i.urgency || '').toLowerCase();
+    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || item.urgency || '').toLowerCase();
     return p === 'high' || p === 'critical';
   }).length;
   const mediumPriorityCount = unacceptedItems.filter(i => {
-    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || i.urgency || '').toLowerCase();
+    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || item.urgency || '').toLowerCase();
     return p === 'medium';
   }).length;
   const lowPriorityCount = unacceptedItems.filter(i => {
-    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || i.urgency || '').toLowerCase();
+    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || item.urgency || '').toLowerCase();
     return p === 'low';
   }).length;
 
@@ -83,6 +97,47 @@ export default function OfficerHomeScreen({ navigation }) {
       }
     }));
     setAcceptingId(null);
+  };
+
+  const handleOpenRejectModal = (item) => {
+    setRejectModalItem(item);
+    setRejectReason('');
+    setRejectError('');
+  };
+
+  const handleCloseRejectModal = () => {
+    if (isRejecting) return;
+    setRejectModalItem(null);
+    setRejectReason('');
+    setRejectError('');
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectReason.trim() || rejectReason.trim().length < 5) {
+      setRejectError('Please provide a rejection description (minimum 5 characters).');
+      return;
+    }
+
+    setIsRejecting(true);
+    setRejectError('');
+    try {
+      await dispatch(rejectComplaintTask({
+        id: rejectModalItem.id,
+        reason: rejectReason.trim(),
+        officerInfo: {
+          id: user?.id || 'OFF-9902',
+          name: user?.name || 'Inspector Rajesh Kumar',
+          department: user?.department || 'Roads & Infrastructure'
+        }
+      })).unwrap();
+
+      setRejectModalItem(null);
+      setRejectReason('');
+    } catch (err) {
+      setRejectError(err?.message || 'Failed to reject complaint. Please try again.');
+    } finally {
+      setIsRejecting(false);
+    }
   };
 
   const handleOpenResolve = (item) => {
@@ -384,6 +439,26 @@ export default function OfficerHomeScreen({ navigation }) {
                   </button>
                   <button
                     type="button"
+                    onClick={() => handleOpenRejectModal(item)}
+                    style={{
+                      backgroundColor: '#FEE2E2',
+                      color: '#DC2626',
+                      border: '1.5px solid #FCA5A5',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      fontSize: '13px',
+                      fontWeight: '800',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'background 0.2s ease'
+                    }}
+                  >
+                    ✕ Reject Task
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleOpenResolve(item)}
                     style={{
                       backgroundColor: '#FFFFFF',
@@ -475,6 +550,230 @@ export default function OfficerHomeScreen({ navigation }) {
           </div>
         )}
       </div>
+
+      {/* Rejection Description Modal */}
+      {rejectModalItem && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '20px',
+            maxWidth: '540px',
+            width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+            border: '1px solid #E2E8F0',
+            overflow: 'hidden',
+            animation: 'scaleIn 0.2s ease-out'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #991B1B 0%, #DC2626 100%)',
+              padding: '18px 20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              color: '#FFFFFF'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '22px' }}>🛑</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', letterSpacing: '-0.01em' }}>
+                    Reject Civic Task
+                  </h3>
+                  <div style={{ fontSize: '11px', color: '#FEE2E2', opacity: 0.9 }}>
+                    Municipal Administration Authority
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseRejectModal}
+                disabled={isRejecting}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  fontSize: '16px',
+                  cursor: isRejecting ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px' }}>
+              {/* Target Complaint Summary */}
+              <div style={{
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: '12px',
+                padding: '12px 14px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '800', color: COLORS.primary }}>
+                    {rejectModalItem.id}
+                  </span>
+                  <span style={{ fontSize: '11px', color: COLORS.textMuted }}>
+                    Ward 14 · {rejectModalItem.reportedBy?.name || 'Citizen'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: COLORS.textPrimary }}>
+                  {rejectModalItem.title}
+                </div>
+                <div style={{ fontSize: '11px', color: COLORS.textSecondary, marginTop: '2px' }}>
+                  📍 {rejectModalItem.location?.address}
+                </div>
+              </div>
+
+              {/* Requirement Note */}
+              <div style={{
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECACA',
+                borderRadius: '10px',
+                padding: '10px 12px',
+                marginBottom: '14px',
+                fontSize: '12px',
+                color: '#991B1B',
+                display: 'flex',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{ fontSize: '15px' }}>ℹ️</span>
+                <span>
+                  Admin rights permit rejecting this task. You <strong>must provide a detailed explanation</strong> why the request is rejected. This description is forwarded directly to the citizen and logged on the audit timeline.
+                </span>
+              </div>
+
+              {/* Quick Template Chips */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: COLORS.textSecondary, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Quick Fill Reason (Tap to Insert):
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {REJECTION_TEMPLATES.map((tmpl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setRejectReason(tmpl)}
+                      style={{
+                        backgroundColor: rejectReason === tmpl ? '#FEE2E2' : '#F1F5F9',
+                        color: rejectReason === tmpl ? '#B91C1C' : '#475569',
+                        border: rejectReason === tmpl ? '1px solid #FCA5A5' : '1px solid #E2E8F0',
+                        borderRadius: '9999px',
+                        padding: '4px 10px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                      }}
+                    >
+                      {tmpl.split(':')[0]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rejection Description Input */}
+              <div style={{ marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: COLORS.textPrimary, marginBottom: '6px' }}>
+                  Rejection Description *
+                </label>
+                <textarea
+                  rows={4}
+                  value={rejectReason}
+                  onChange={(e) => {
+                    setRejectReason(e.target.value);
+                    if (rejectError) setRejectError('');
+                  }}
+                  placeholder="Explain clearly why this civic task was rejected by the administration (e.g. invalid photo, duplicate defect, not under municipal jurisdiction)..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: `1.5px solid ${rejectError ? '#EF4444' : '#CBD5E1'}`,
+                    fontSize: '13px',
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {/* Character counter & error display */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                <span style={{ fontSize: '11px', color: rejectError ? '#DC2626' : COLORS.textMuted }}>
+                  {rejectError || (rejectReason.trim().length < 5 ? `Min 5 characters required (${rejectReason.trim().length}/5)` : '✓ Description valid')}
+                </span>
+                <span style={{ fontSize: '11px', color: COLORS.textMuted }}>
+                  {rejectReason.length} characters
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={handleCloseRejectModal}
+                  disabled={isRejecting}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: '10px',
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: COLORS.textSecondary,
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: isRejecting ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmReject}
+                  disabled={isRejecting || rejectReason.trim().length < 5}
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    backgroundColor: (isRejecting || rejectReason.trim().length < 5) ? '#FCA5A5' : '#DC2626',
+                    color: '#FFFFFF',
+                    fontSize: '13px',
+                    fontWeight: '800',
+                    cursor: (isRejecting || rejectReason.trim().length < 5) ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {isRejecting ? '⏳ Rejecting Task...' : '🛑 Confirm & Reject Task'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

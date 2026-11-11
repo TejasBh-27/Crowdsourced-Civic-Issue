@@ -140,7 +140,8 @@ async def inspect(
         reported_category=category,
         latitude=latitude,
         longitude=longitude,
-        is_near_critical=is_critical_zone
+        is_near_critical=is_critical_zone,
+        filename=photo.filename or ""
     )
 
     if not cv_result["is_valid"]:
@@ -260,6 +261,7 @@ async def report_issue_direct(
         reported_category=category_hint or "",
         latitude=latitude or 0.0,
         longitude=longitude or 0.0,
+        filename=file.filename or ""
     )
 
     return {
@@ -270,8 +272,11 @@ async def report_issue_direct(
         "rejection_reason": res.get("rejection_reason"),
         "model": res.get("model_name"),
         "category": res.get("predicted_category"),
+        "category_key": res.get("category_key"),
+        "mapped_category_key": res.get("category_key"),
         "category_label": res.get("category_label"),
         "confidence": res.get("confidence"),
+        "category_confidence": res.get("category_confidence"),
         "issue_detected": res.get("issue_detected", False),
         "is_user_category_correct": res.get("is_user_category_correct"),
         "category_status": res.get("category_status"),
@@ -281,4 +286,5 @@ async def report_issue_direct(
         "sla_hours": res.get("sla_hours"),
         "visual_cues": res.get("visual_cues", []),
         "officer_recommendation": res.get("officer_recommendation"),
+        "all_category_probs": res.get("all_category_probs", {})
     }
