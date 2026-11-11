@@ -153,7 +153,7 @@ export default function ResolveComplaintScreen({ navigation }) {
           </div>
         </Card>
 
-        <AiInspectionBadge aiResult={item.aiInspection} />
+        <AiInspectionBadge aiResult={item.aiInspection} forceShowOfficer />
 
         {/* Already Resolved View */}
         {isAlreadyResolved ? (

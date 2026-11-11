@@ -65,6 +65,7 @@ export interface Repo {
     update(id: string, spec: UpdateSpec): Promise<Complaint | null | undefined>;
     listByCitizen(citizenId: string): Promise<Complaint[]>;
     listByOfficer(officerId: string, opts?: { status?: string }): Promise<Complaint[]>;
+    delete?(id: string): Promise<boolean>;
   };
   wards: { list(): Promise<Ward[]>; upsert(w: Ward): Promise<void> };
   officers: {

@@ -52,6 +52,9 @@ export function createMemoryRepo(): Repo {
           .filter((c) => c.assignedOfficer?.id === officerId && (!status || c.status === status))
           .map(clone);
       },
+      async delete(id) {
+        return complaints.delete(id);
+      },
     },
 
     wards: {

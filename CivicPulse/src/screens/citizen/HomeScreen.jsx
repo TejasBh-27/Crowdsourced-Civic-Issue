@@ -3,22 +3,49 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchComplaints, setSelectedComplaint } from '../../store/slices/complaintSlice';
 import Card from '../../components/Card';
 import StatusBadge from '../../components/StatusBadge';
-import AiInspectionBadge from '../../components/AiInspectionBadge';
 import COLORS from '../../constants/colors';
 import STRINGS from '../../constants/strings';
 
-const StatCard = ({ count, label, color, bg, icon }) => (
+const StatCard = ({ count, label, subtitle, color, bg, icon }) => (
   <div style={{
-    backgroundColor: bg,
+    backgroundColor: '#FFFFFF',
     borderRadius: '16px',
-    padding: '14px 12px',
+    padding: '16px',
     flex: 1,
-    textAlign: 'center',
-    border: `1px solid ${color}25`
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow-sm)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    transition: 'all 0.2s ease',
+    cursor: 'default'
   }}>
-    <div style={{ fontSize: '10px', marginBottom: '4px' }}>{icon}</div>
-    <div style={{ fontSize: '26px', fontWeight: '800', color, lineHeight: 1 }}>{count}</div>
-    <div style={{ fontSize: '10px', fontWeight: '700', color: `${color}BB`, marginTop: '3px' }}>{label}</div>
+    <div style={{
+      width: '46px',
+      height: '46px',
+      borderRadius: '12px',
+      backgroundColor: bg,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '22px',
+      flexShrink: 0
+    }}>
+      {icon}
+    </div>
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: '24px', fontWeight: '800', color: COLORS.textPrimary, lineHeight: 1.1 }}>
+        {count}
+      </div>
+      <div style={{ fontSize: '12px', fontWeight: '700', color: color, marginTop: '2px' }}>
+        {label}
+      </div>
+      {subtitle && (
+        <div style={{ fontSize: '10px', color: COLORS.textMuted, marginTop: '1px' }}>
+          {subtitle}
+        </div>
+      )}
+    </div>
   </div>
 );
 
@@ -44,182 +71,487 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <div className="animate-fade-in" style={{ paddingBottom: '80px' }}>
-      {/* Header */}
+    <div className="animate-fade-in" style={{ paddingBottom: '90px' }}>
+
+      {/* Top Hero Section */}
       <div style={{
-        background: 'linear-gradient(145deg, #0F172A 0%, #134E4A 100%)',
-        padding: '28px 20px 32px',
-        borderBottomLeftRadius: '28px',
-        borderBottomRightRadius: '28px',
+        background: 'linear-gradient(145deg, #0F172A 0%, #064E3B 100%)',
+        padding: '32px 20px 36px',
+        borderBottomLeftRadius: '32px',
+        borderBottomRightRadius: '32px',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)'
       }}>
-        <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(13,148,136,0.15)' }} />
+        {/* Subtle decorative circles */}
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '220px', height: '220px', borderRadius: '50%', background: 'rgba(13,148,136,0.15)' }} />
+        <div style={{ position: 'absolute', bottom: '-40px', left: '10%', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)' }} />
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
-          <div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', fontWeight: '600', marginBottom: '4px' }}>
-              {greeting} 👋
-            </div>
-            <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#FFFFFF', letterSpacing: '-0.03em', marginBottom: '4px' }}>
-              {user?.name || 'Ananya Sharma'}
-            </h2>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span>📍</span> {user?.ward || 'Ward 14 — Central Zone'}
-            </div>
-          </div>
-
+        <div className="cp-container" style={{ position: 'relative', zIndex: 1 }}>
+          {/* Top Right Profile Quick Link with User Avatar */}
           <div
             onClick={() => navigation.navigate('Profile')}
-            style={{ cursor: 'pointer', position: 'relative' }}
+            style={{
+              position: 'absolute',
+              top: '0',
+              right: '0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              background: 'rgba(255, 255, 255, 0.08)',
+              padding: '4px 10px 4px 4px',
+              borderRadius: '30px',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              transition: 'all 0.2s ease',
+              zIndex: 2
+            }}
+            title="View and Edit Profile Photo"
           >
-            <img
-              src={user?.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'}
-              alt="Avatar"
-              style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: `2.5px solid ${COLORS.primary}`, display: 'block' }}
-            />
-            <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '14px', height: '14px', borderRadius: '50%', background: '#10B981', border: '2px solid #0F172A' }} />
+            <div style={{ position: 'relative' }}>
+              <img
+                src={user?.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'}
+                alt="Profile"
+                style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', display: 'block' }}
+              />
+              <span style={{
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                background: '#10B981',
+                border: '2px solid #064E3B'
+              }} />
+            </div>
+            <span style={{ color: '#FFFFFF', fontSize: '11px', fontWeight: '700' }}>
+              Profile ⚙️
+            </span>
           </div>
-        </div>
 
-        {/* Stats Row */}
-        <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-          <StatCard count={pendingCount} label="Submitted" color="#D97706" bg="#FEF3C7" icon="📬" />
-          <StatCard count={inProgressCount} label="Active" color="#8B5CF6" bg="#EDE9FE" icon="⚙️" />
-          <StatCard count={resolvedCount} label="Resolved" color="#059669" bg="#D1FAE5" icon="✅" />
+          <div className="cp-hero-row" style={{ display: 'flex', gap: '24px' }}>
+
+            {/* Left Column: Greeting, User, Status */}
+            <div style={{ flex: '1 1 340px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
+                  {greeting} 👋
+                </span>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  color: '#10B981',
+                  background: 'rgba(16, 185, 129, 0.2)',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }}></span>
+                  Citizen Portal Active
+                </span>
+              </div>
+
+              <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#FFFFFF', letterSpacing: '-0.03em', lineHeight: 1.15, marginBottom: '6px' }}>
+                {user?.name || 'Citizen'}
+              </h1>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', marginBottom: '16px' }}>
+                <span>📍</span>
+                <span>{user?.ward || 'Ward 14 - Central Zone'}</span>
+                <span style={{ opacity: 0.4 }}>•</span>
+                <span>Verified Resident</span>
+              </div>
+
+              {/* Action buttons on desktop */}
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => navigation.navigate('ReportIssue')}
+                  style={{
+                    backgroundColor: COLORS.primary,
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '10px 18px',
+                    fontSize: '13px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 14px rgba(13, 148, 136, 0.4)',
+                    transition: 'transform 0.15s ease'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                >
+                  <span>📷</span> Report New Issue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigation.navigate('MyComplaints')}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    color: '#FFFFFF',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '10px',
+                    padding: '10px 16px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                >
+                  <span>📋</span> My Reports ({items.length})
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column: 3 Metric Cards */}
+            <div style={{ flex: '1 1 500px' }}>
+              <div style={{
+                fontSize: '11px',
+                fontWeight: '800',
+                color: 'rgba(255, 255, 255, 0.5)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '10px'
+              }}>
+                Issue Resolution Overview
+              </div>
+              <div className="cp-home-stats-grid" style={{ display: 'grid', gap: '10px' }}>
+                <StatCard
+                  count={pendingCount}
+                  label="Submitted"
+                  subtitle="Awaiting AI/Review"
+                  color="#D97706"
+                  bg="#FEF3C7"
+                  icon="📁"
+                />
+                <StatCard
+                  count={inProgressCount}
+                  label="In Progress"
+                  subtitle="Assigned to Crew"
+                  color="#8B5CF6"
+                  bg="#EDE9FE"
+                  icon="⚡"
+                />
+                <StatCard
+                  count={resolvedCount}
+                  label="Resolved"
+                  subtitle="Closed & Verified"
+                  color="#059669"
+                  bg="#D1FAE5"
+                  icon="✅"
+                />
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
 
-      <div style={{ padding: '20px' }}>
-        {/* CTA Banner */}
+      {/* Main Body Content Container */}
+      <div className="cp-container" style={{ padding: '24px 20px' }}>
+
+        {/* AI Action Banner */}
         <div
           onClick={() => navigation.navigate('ReportIssue')}
-          className="animate-pulse-glow"
           style={{
-            background: 'linear-gradient(135deg, #0D9488 0%, #0284C7 100%)',
-            borderRadius: '20px',
-            padding: '20px',
+            background: 'linear-gradient(135deg, #0D9488 0%, #0369A1 100%)',
+            borderRadius: '24px',
+            padding: '24px',
             color: '#FFFFFF',
             cursor: 'pointer',
-            boxShadow: '0 10px 30px rgba(13, 148, 136, 0.35)',
-            marginBottom: '24px',
+            boxShadow: '0 8px 28px rgba(13, 148, 136, 0.28)',
+            marginBottom: '32px',
             position: 'relative',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 12px 34px rgba(13, 148, 136, 0.38)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'none';
+            e.currentTarget.style.boxShadow = '0 8px 28px rgba(13, 148, 136, 0.28)';
           }}
         >
-          <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-          <div style={{ fontSize: '9px', fontWeight: '800', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.7)', marginBottom: '6px' }}>
-            🤖 FASTAPI AI-POWERED REPORTING
-          </div>
-          <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '6px', letterSpacing: '-0.02em' }}>
-            Spotted a civic issue?
-          </h3>
-          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5, marginBottom: '16px' }}>
-            TensorFlow CV inspects photo clarity ➔ DistilBERT NLP routes department ➔ Scikit-learn ML scores priority.
-          </p>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            backgroundColor: '#FFFFFF',
-            color: COLORS.primaryDark,
-            fontWeight: '800',
-            fontSize: '12px',
-            padding: '8px 16px',
-            borderRadius: '10px'
-          }}>
-            📷 Report Issue Now <span>→</span>
-          </div>
-        </div>
-
-        {/* Categories */}
-        <div className="section-title" style={{ marginBottom: '12px' }}>Browse by Category</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '24px' }}>
-          {STRINGS.categories.map((cat) => (
-            <div
-              key={cat.id}
-              onClick={() => navigation.navigate('ReportIssue', { preselectedCategory: cat.id })}
-              style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '14px',
-                padding: '12px 8px',
-                border: '1px solid var(--border)',
-                display: 'flex',
-                flexDirection: 'column',
+          <div className="cp-banner-desktop-row" style={{ display: 'flex' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                cursor: 'pointer',
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                boxShadow: 'var(--shadow-sm)'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
-            >
-              <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: `${cat.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
-                {cat.icon}
+                background: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(8px)',
+                padding: '4px 10px',
+                borderRadius: '20px',
+                fontSize: '11px',
+                fontWeight: '800',
+                letterSpacing: '0.04em',
+                marginBottom: '10px'
+              }}>
+                <span>⚡</span> INSTANT CIVIC REPORTING
               </div>
-              <div style={{ fontSize: '10px', fontWeight: '700', color: COLORS.textPrimary, textAlign: 'center', lineHeight: 1.2 }}>
-                {cat.label}
+              <h2 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+                Spotted a civic issue in your ward?
+              </h2>
+              <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.85)', lineHeight: 1.5, maxWidth: '640px', marginBottom: '14px' }}>
+                Snap a photo. Our automated intake system verifies your submission and routes it directly to the responsible municipal department for swift action.
+              </p>
+
+              {/* 3 Step Badge Trail */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '11px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.9)' }}>
+                <span style={{ background: 'rgba(0,0,0,0.15)', padding: '4px 8px', borderRadius: '6px' }}>
+                  1. Photo Evidence
+                </span>
+                <span style={{ opacity: 0.6 }}>→</span>
+                <span style={{ background: 'rgba(0,0,0,0.15)', padding: '4px 8px', borderRadius: '6px' }}>
+                  2. Auto Ward Routing
+                </span>
+                <span style={{ opacity: 0.6 }}>→</span>
+                <span style={{ background: 'rgba(0,0,0,0.15)', padding: '4px 8px', borderRadius: '6px' }}>
+                  3. Field Action & Fix
+                </span>
               </div>
             </div>
-          ))}
+
+            <div style={{ alignSelf: 'center' }}>
+              <div style={{
+                backgroundColor: '#FFFFFF',
+                color: COLORS.primaryDark,
+                fontWeight: '800',
+                fontSize: '13px',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.15)'
+              }}>
+                <span>📷</span> Report Issue Now <span>→</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Recent Complaints */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <div className="section-title" style={{ marginBottom: 0 }}>Recent Complaints</div>
-          <span
-            onClick={() => navigation.navigate('MyComplaints')}
-            style={{ fontSize: '12px', fontWeight: '700', color: COLORS.primary, cursor: 'pointer' }}
-          >
-            View All →
-          </span>
-        </div>
+        {/* Categories Section */}
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: COLORS.textPrimary }}>
+                Browse by Category
+              </div>
+              <div style={{ fontSize: '12px', color: COLORS.textMuted }}>
+                Choose an issue type to pre-fill your complaint report
+              </div>
+            </div>
+          </div>
 
-        {isLoading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[1, 2].map(i => (
-              <div key={i} className="skeleton" style={{ height: '110px', borderRadius: '16px' }} />
+          <div className="cp-categories-grid" style={{ display: 'grid', gap: '12px' }}>
+            {STRINGS.categories.map((cat) => (
+              <div
+                key={cat.id}
+                onClick={() => navigation.navigate('ReportIssue', { preselectedCategory: cat.id })}
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '16px',
+                  padding: '16px 12px',
+                  border: '1.5px solid var(--border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: 'var(--shadow-sm)',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                  e.currentTarget.style.borderColor = cat.color;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                }}
+              >
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '14px',
+                  backgroundColor: `${cat.color}15`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px'
+                }}>
+                  {cat.icon}
+                </div>
+                <div style={{ fontSize: '12px', fontWeight: '800', color: COLORS.textPrimary, lineHeight: 1.3 }}>
+                  {cat.label}
+                </div>
+                <div style={{ fontSize: '10px', color: COLORS.textMuted }}>
+                  {cat.dept ? cat.dept.split('&')[0] : 'Municipal'}
+                </div>
+              </div>
             ))}
           </div>
-        ) : items.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '40px', marginBottom: '10px' }}>📂</div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: COLORS.textSecondary }}>No complaints yet</div>
-            <div style={{ fontSize: '12px', color: COLORS.textMuted, marginTop: '4px' }}>Report your first civic issue!</div>
-          </div>
-        ) : (
-          items.slice(0, 3).map((item, idx) => (
-            <div
-              key={item.id}
-              className="animate-fade-in"
-              style={{ animationDelay: `${idx * 0.08}s` }}
-            >
-              <Card onClick={() => handleOpenDetail(item)} elevated>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0 }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '9px', fontWeight: '800', color: COLORS.textMuted }}>{item.id}</span>
-                      <StatusBadge status={item.status} />
-                    </div>
-                    <div className="truncate" style={{ fontSize: '13px', fontWeight: '700', color: COLORS.textPrimary, marginBottom: '3px' }}>
-                      {item.title}
-                    </div>
-                    <div style={{ fontSize: '11px', color: COLORS.textMuted }}>📍 {item.location?.address}</div>
-                  </div>
-                </div>
-                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
-                  <AiInspectionBadge aiResult={item.aiInspection} compact />
-                </div>
-              </Card>
+        </div>
+
+        {/* Recent Complaints Section */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: COLORS.textPrimary }}>
+                Recent Complaints
+              </div>
+              <div style={{ fontSize: '12px', color: COLORS.textMuted }}>
+                Live updates and officer progress on reports in your area
+              </div>
             </div>
-          ))
-        )}
+            {items.length > 0 && (
+              <span
+                onClick={() => navigation.navigate('MyComplaints')}
+                style={{
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  color: COLORS.primary,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                View All ({items.length}) →
+              </span>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
+              {[1, 2].map(i => (
+                <div key={i} className="skeleton" style={{ height: '140px', borderRadius: '16px' }} />
+              ))}
+            </div>
+          ) : items.length === 0 ? (
+            /* Rich Empty State for New Users (Like Tejas Bhamre) */
+            <div style={{
+              textAlign: 'center',
+              padding: '48px 24px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '20px',
+              border: '1.5px dashed var(--border)',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'rgba(13, 148, 136, 0.1)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '32px',
+                marginBottom: '14px'
+              }}>
+                📋
+              </div>
+              <h3 style={{ fontSize: '16px', fontWeight: '800', color: COLORS.textPrimary, marginBottom: '6px' }}>
+                No Complaints Filed Yet
+              </h3>
+              <p style={{ fontSize: '13px', color: COLORS.textSecondary, maxWidth: '440px', margin: '0 auto 18px', lineHeight: 1.5 }}>
+                You haven't reported any civic issues in your area yet. Spot a pothole, leaking pipe, or damaged streetlight? File a report now with instant AI verification!
+              </p>
+              <button
+                type="button"
+                onClick={() => navigation.navigate('ReportIssue')}
+                style={{
+                  backgroundColor: COLORS.primary,
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '12px 24px',
+                  fontSize: '13px',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(13, 148, 136, 0.3)'
+                }}
+              >
+                <span>📷</span> File First Complaint Now →
+              </button>
+            </div>
+          ) : (
+            <div className="cp-complaints-grid">
+              {items.slice(0, 4).map((item, idx) => (
+                <div
+                  key={item.id}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${idx * 0.08}s` }}
+                >
+                  <Card onClick={() => handleOpenDetail(item)} elevated style={{ height: '100%' }}>
+                    <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                      <img
+                        src={item.image || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600'}
+                        alt={item.title}
+                        style={{
+                          width: '72px',
+                          height: '72px',
+                          borderRadius: '12px',
+                          objectFit: 'cover',
+                          flexShrink: 0,
+                          border: '1px solid var(--border)'
+                        }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '10px', fontWeight: '800', color: COLORS.textMuted }}>
+                            {item.id}
+                          </span>
+                          <StatusBadge status={item.status} />
+                        </div>
+                        <div className="truncate" style={{ fontSize: '14px', fontWeight: '700', color: COLORS.textPrimary, marginBottom: '4px' }}>
+                          {item.title}
+                        </div>
+                        <div style={{ fontSize: '11px', color: COLORS.textMuted, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span>📍</span>
+                          <span className="truncate">{item.location?.address || 'Ward 14'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: COLORS.textSecondary, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        🏷️ {item.categoryLabel || item.category || 'Civic Issue'}
+                      </span>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: COLORS.primary, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        Details →
+                      </span>
+                    </div>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );

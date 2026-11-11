@@ -13,10 +13,10 @@ export function setApiUser(user) {
 export function getApiHeaders(user = currentUser) {
   if (!user) return {};
   return {
-    'x-user-id': user.id || 'CIT-4481',
+    'x-user-id': user.id || 'CIT-4668',
     'x-user-role': user.role || 'citizen',
-    'x-user-name': user.name || 'Ananya Sharma',
-    'x-user-phone': user.phone || '9876543210',
+    'x-user-name': user.name || 'Tejas Bhamre',
+    'x-user-phone': user.phone || '9545286810',
   };
 }
 
@@ -57,6 +57,18 @@ export async function apiPostForm(path, formData, user = currentUser) {
   return res.json();
 }
 
+export async function apiDelete(path, user = currentUser) {
+  const res = await fetch(`/api/v1${path}`, {
+    method: 'DELETE',
+    headers: getApiHeaders(user),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+  }
+  return res.json().catch(() => ({ ok: true }));
+}
+
 export async function checkBackendHealth() {
   try {
     const res = await fetch('/api/v1/health', { signal: AbortSignal.timeout(2000) });
@@ -66,4 +78,4 @@ export async function checkBackendHealth() {
   }
 }
 
-export default { apiGet, apiPost, apiPostForm, setApiUser, getApiHeaders, checkBackendHealth };
+export default { apiGet, apiPost, apiPostForm, apiDelete, setApiUser, getApiHeaders, checkBackendHealth };

@@ -1,6 +1,27 @@
 export const validatePhone = (phone) => {
   const cleaned = (phone || '').replace(/\D/g, '');
-  return cleaned.length >= 10;
+  return cleaned.length === 10;
+};
+
+export const validateEmail = (email) => {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test((email || '').trim());
+};
+
+export const validateIdentifier = (value) => {
+  const val = (value || '').trim();
+  if (!val) return false;
+  // If numeric or looks like phone
+  if (/^\+?\d[\d\s-]{8,14}$/.test(val)) {
+    const digits = val.replace(/\D/g, '');
+    return digits.length === 10;
+  }
+  // Otherwise test as email
+  return validateEmail(val);
+};
+
+export const validatePassword = (password) => {
+  return typeof password === 'string' && password.length >= 6;
 };
 
 export const validateOTP = (otp) => {
@@ -10,14 +31,8 @@ export const validateOTP = (otp) => {
 
 export const validateComplaintForm = ({ title, category, description, location }) => {
   const errors = {};
-  if (!title || title.trim().length < 5) {
-    errors.title = 'Title must be at least 5 characters long';
-  }
   if (!category) {
     errors.category = 'Please select an issue category';
-  }
-  if (!description || description.trim().length < 8) {
-    errors.description = 'Description must be at least 8 characters long';
   }
   if (!location || !location.address) {
     errors.location = 'Please select location coordinates on map';

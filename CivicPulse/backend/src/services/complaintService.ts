@@ -219,5 +219,16 @@ export function createComplaintService({ repo, ai, notifier, storage, wardRouter
     return done;
   }
 
-  return { submit, resubmitPhoto, listMine, getForUser, listForOfficer, listWorkers, assignWorker, start, resolve, process };
+  async function remove(user: User, id: string): Promise<{ success: boolean; id: string }> {
+    const c = await repo.complaints.getById(id);
+    if (!c) throw notFound('Complaint not found');
+    const isOwner = c.reportedBy.id === user.id;
+    if (!isOwner && user.role !== ROLES.ADMIN) throw forbidden('You can only withdraw your own complaints');
+    if (repo.complaints.delete) {
+      await repo.complaints.delete(id);
+    }
+    return { success: true, id };
+  }
+
+  return { submit, resubmitPhoto, listMine, getForUser, listForOfficer, listWorkers, assignWorker, start, resolve, process, remove };
 }

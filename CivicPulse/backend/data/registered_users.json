@@ -1,0 +1,39 @@
+[
+  {
+    "id": "CIT-4668",
+    "name": "Tejas Bhamre",
+    "email": "tejas.bhamre@civicpulse.gov",
+    "phone": "9545286810",
+    "role": "citizen",
+    "password": "password123",
+    "ward": "Citizen Ward",
+    "address": "Near R.C. Patel Campus, Karwand Road, Shirpur, 425405",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "CIT-4481",
+    "name": "Ananya Sharma",
+    "email": "ananya@civicpulse.gov",
+    "phone": "9876543210",
+    "role": "citizen",
+    "password": "password123",
+    "ward": "Ward 14 - Central Zone",
+    "address": "B-42, Park View Apartments, Ward 14",
+    "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "OFF-9902",
+    "name": "Inspector Rajesh Kumar",
+    "email": "rajesh.officer@civicpulse.gov",
+    "phone": "9876500001",
+    "role": "officer",
+    "password": "password123",
+    "department": "Roads & Infrastructure",
+    "ward": "Ward 14 - Central Zone",
+    "badgeNumber": "MCD-8841",
+    "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  }
+]

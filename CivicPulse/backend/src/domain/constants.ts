@@ -31,6 +31,7 @@ export const CATEGORIES = Object.freeze({
   water: { label: 'Water Leakage & Supply', department: 'water' },
   street_light: { label: 'Streetlight Failure', department: 'electrical' },
   drainage: { label: 'Drainage Overflow', department: 'drainage' },
+  traffic: { label: 'Traffic & Illegal Parking', department: 'traffic' },
   illegal_parking: { label: 'Traffic & Illegal Parking', department: 'traffic' },
 });
 

@@ -3,7 +3,7 @@ import React from 'react';
 const STATUS_CONFIG = {
   'Submitted': { bg: '#FEF3C7', color: '#92400E', label: '📬 Submitted' },
   'Pending': { bg: '#FEF3C7', color: '#92400E', label: '⏳ Pending' },
-  'Verified_Assigned': { bg: '#DBEAFE', color: '#1E3A8A', label: '✅ AI Verified' },
+  'Verified_Assigned': { bg: '#DBEAFE', color: '#1E3A8A', label: '✅ Verified' },
   'In Progress': { bg: '#EDE9FE', color: '#4C1D95', label: '⚙️ In Progress' },
   'Resolved': { bg: '#D1FAE5', color: '#064E3B', label: '🎉 Resolved' },
   'Rejected_Invalid_Image': { bg: '#FEE2E2', color: '#7F1D1D', label: '❌ CV Rejected' },

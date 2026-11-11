@@ -450,7 +450,6 @@ def train_nlp_pipeline() -> Pipeline:
         ("clf", LogisticRegression(
             C=1.5,
             max_iter=1000,
-            multi_class="multinomial",
             solver="lbfgs",
         )),
     ])

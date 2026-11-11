@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { resubmitPhoto } from '../../store/slices/complaintSlice';
+import { resubmitPhoto, deleteComplaint } from '../../store/slices/complaintSlice';
 import Card from '../../components/Card';
 import StatusBadge from '../../components/StatusBadge';
-import AiInspectionBadge from '../../components/AiInspectionBadge';
+import ComplaintLifecycleStepper from '../../components/ComplaintLifecycleStepper';
 import Button from '../../components/Button';
 import COLORS from '../../constants/colors';
 
@@ -60,41 +60,83 @@ export default function ComplaintDetailScreen({ navigation }) {
     }
   };
 
+  const handleDeleteComplaint = async () => {
+    const confirmed = window.confirm(
+      `⚠️ Withdraw Complaint?\n\nAre you sure you want to take back and delete complaint #${item.id}?\n\nThis will permanently remove your complaint from the municipal portal.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await dispatch(deleteComplaint(item.id)).unwrap();
+      alert(`✅ Complaint #${item.id} has been withdrawn and deleted.`);
+      navigation.goBack();
+    } catch (err) {
+      alert(`❌ Failed to delete complaint: ${err}`);
+    }
+  };
+
   return (
-    <div className="animate-fade-in" style={{ paddingBottom: '80px', maxWidth: '600px', margin: '0 auto' }}>
+    <div className="animate-fade-in" style={{ paddingBottom: '90px', maxWidth: '780px', margin: '0 auto' }}>
       {/* Hidden inputs */}
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handleFileSelect} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelect} />
 
       {/* Top Bar */}
-      <div style={{ backgroundColor: COLORS.secondary, color: '#FFFFFF', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ backgroundColor: COLORS.secondary, color: '#FFFFFF', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button type="button" onClick={() => navigation.goBack()} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}>
           ← Back
         </button>
         <span style={{ fontSize: '14px', fontWeight: '800' }}>{item.id}</span>
-        <StatusBadge status={item.status} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={handleDeleteComplaint}
+            title="Take request back (Delete complaint)"
+            style={{
+              backgroundColor: '#DC2626',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '4px 10px',
+              fontSize: '11px',
+              fontWeight: '800',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <span>🗑️</span>
+            <span>Delete</span>
+          </button>
+        </div>
       </div>
 
       <div style={{ padding: '16px' }}>
         {/* Cover Photo */}
-        <div style={{ borderRadius: '16px', overflow: 'hidden', height: '200px', position: 'relative', marginBottom: '12px' }}>
+        <div style={{ borderRadius: '16px', overflow: 'hidden', height: '220px', position: 'relative', marginBottom: '12px' }}>
           <img src={item.image} alt="Cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           <div style={{ position: 'absolute', top: '12px', left: '12px', backgroundColor: 'rgba(15,23,42,0.85)', color: '#FFFFFF', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' }}>
             🏷️ {item.categoryLabel}
           </div>
         </div>
 
-        {/* AI Inspection Full Report */}
-        <AiInspectionBadge aiResult={item.aiInspection} />
+        {/* Working Process / Lifecycle Stepper */}
+        <ComplaintLifecycleStepper
+          status={item.status}
+          assignedOfficer={item.assignedOfficer}
+          resolutionNote={item.resolutionNote}
+          mttrHours={item.mttrHours}
+        />
 
-        {/* Resubmit Photo Section — only when CV rejected */}
+        {/* Resubmit Photo Section — only when photo rejected */}
         {isRejected && (
           <Card style={{ backgroundColor: '#FEF2F2', borderColor: '#FCA5A5', marginBottom: '16px' }}>
             <div style={{ fontSize: '14px', fontWeight: '800', color: COLORS.rejected, marginBottom: '6px' }}>
               ⚠️ Action Required: Upload a Clearer Photo
             </div>
             <p style={{ fontSize: '12px', color: COLORS.textPrimary, lineHeight: 1.5, marginBottom: '14px' }}>
-              TensorFlow CV detected blurriness or invalid content (clarity score low). Upload a well-lit, in-focus photo from 3–5 feet away.
+              The uploaded photo was unclear or blurry. Please upload a well-lit, steady photo from 3–5 feet away so municipal officers can inspect and resolve the issue.
             </p>
 
             {/* Photo picker */}
@@ -125,7 +167,7 @@ export default function ComplaintDetailScreen({ navigation }) {
             {photoError && <div style={{ color: COLORS.rejected, fontSize: '11px', fontWeight: '600', marginBottom: '10px' }}>⚠️ {photoError}</div>}
 
             <Button
-              title={resubmitting ? '🤖 Re-running TensorFlow CV…' : '📤 Resubmit Photo to AI Pipeline'}
+              title={resubmitting ? '⏳ Verifying photo…' : '📤 Resubmit Clear Photo'}
               onPress={handleResubmitPhoto}
               loading={resubmitting || isSubmitting}
               variant="danger"
@@ -153,10 +195,28 @@ export default function ComplaintDetailScreen({ navigation }) {
           <p style={{ fontSize: '13px', color: COLORS.textSecondary, lineHeight: 1.5, marginBottom: '12px' }}>{item.description}</p>
 
           <div style={{ fontSize: '11px', fontWeight: '800', color: COLORS.textMuted, textTransform: 'uppercase', marginBottom: '4px' }}>Location</div>
-          <div style={{ backgroundColor: '#F8FAFC', borderRadius: '8px', padding: '10px', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '12px', fontWeight: '700', color: COLORS.textPrimary }}>📍 {item.location?.address}</div>
-            <div style={{ fontSize: '10px', color: COLORS.textMuted, marginTop: '2px', fontFamily: 'monospace' }}>
-              GeoJSON: [{item.location?.coordinates?.join(', ') || '77.2090, 28.6139'}]
+          <div style={{ backgroundColor: '#F8FAFC', borderRadius: '10px', padding: '12px', border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '13px', fontWeight: '800', color: COLORS.textPrimary }}>📍 {item.location?.address}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+              <span style={{ fontSize: '10px', color: COLORS.textMuted, fontFamily: 'monospace' }}>
+                [{item.location?.coordinates?.join(', ') || '77.2090, 28.6139'}]
+              </span>
+              <a
+                href={`https://www.google.com/maps?q=${item.location?.coordinates?.[1] || 28.6139},${item.location?.coordinates?.[0] || 77.2090}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  color: '#0284C7',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                🗺️ View in Google Maps ↗
+              </a>
             </div>
           </div>
         </Card>
@@ -217,6 +277,40 @@ export default function ComplaintDetailScreen({ navigation }) {
             ))}
           </div>
         </Card>
+
+        {/* Take Request Back / Withdraw Complaint */}
+        <button
+          type="button"
+          onClick={handleDeleteComplaint}
+          style={{
+            width: '100%',
+            backgroundColor: '#FEE2E2',
+            color: '#DC2626',
+            border: '1.5px solid #FCA5A5',
+            borderRadius: '14px',
+            padding: '14px',
+            fontSize: '13px',
+            fontWeight: '800',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease',
+            marginBottom: '20px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#DC2626';
+            e.currentTarget.style.color = '#FFFFFF';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#FEE2E2';
+            e.currentTarget.style.color = '#DC2626';
+          }}
+        >
+          <span style={{ fontSize: '15px' }}>🗑️</span>
+          <span>Take Request Back (Withdraw & Delete Complaint)</span>
+        </button>
       </div>
     </div>
   );

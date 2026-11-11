@@ -6,18 +6,68 @@ import StatusBadge from '../../components/StatusBadge';
 import AiInspectionBadge from '../../components/AiInspectionBadge';
 import COLORS from '../../constants/colors';
 
+const CATEGORY_TABS = [
+  { id: 'ALL', label: 'All Categories', icon: '📋' },
+  { id: 'pothole', label: 'Roads & Damage', icon: '🚧' },
+  { id: 'garbage', label: 'Garbage & Waste', icon: '🗑️' },
+  { id: 'water', label: 'Water Leakage', icon: '💧' },
+  { id: 'street_light', label: 'Streetlight', icon: '💡' },
+  { id: 'drainage', label: 'Drainage Overflow', icon: '🌊' },
+  { id: 'illegal_parking', label: 'Traffic & Parking', icon: '🚗' },
+];
+
 export default function OfficerHomeScreen({ navigation }) {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { items, mttrStats, isLoading } = useSelector((state) => state.complaints);
   const [acceptingId, setAcceptingId] = useState(null);
+  const [priorityFilter, setPriorityFilter] = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
 
   useEffect(() => {
     dispatch(fetchComplaints());
     dispatch(fetchMttrAnalytics());
   }, [dispatch]);
 
-  const unacceptedItems = items.filter(c => c.status === 'Verified_Assigned');
+  const getPriorityWeight = (item) => {
+    const level = (item.aiInspection?.mlPriority?.level || item.aiInspection?.cvResult?.predictedPriority || item.urgency || '').toLowerCase();
+    const score = Number(item.aiInspection?.mlPriority?.score || item.aiInspection?.cvResult?.priorityScore) || 0;
+    let base = 0;
+    if (level === 'critical') base = 3000;
+    else if (level === 'high') base = 2000;
+    else if (level === 'medium') base = 1000;
+    return base + score;
+  };
+
+  const unacceptedItems = [...items]
+    .filter(c => c.status === 'Verified_Assigned' || c.status === 'Submitted')
+    .sort((a, b) => getPriorityWeight(b) - getPriorityWeight(a));
+
+  const filteredUnaccepted = unacceptedItems.filter(item => {
+    if (priorityFilter !== 'ALL') {
+      const pri = (item.aiInspection?.mlPriority?.level || item.aiInspection?.cvResult?.predictedPriority || item.urgency || '').toUpperCase();
+      if (pri !== priorityFilter) return false;
+    }
+    if (categoryFilter !== 'ALL') {
+      const cat = (item.aiInspection?.cvResult?.predictedCategory || item.category || '').toLowerCase();
+      if (cat !== categoryFilter && !cat.includes(categoryFilter)) return false;
+    }
+    return true;
+  });
+
+  const highPriorityCount = unacceptedItems.filter(i => {
+    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || i.urgency || '').toLowerCase();
+    return p === 'high' || p === 'critical';
+  }).length;
+  const mediumPriorityCount = unacceptedItems.filter(i => {
+    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || i.urgency || '').toLowerCase();
+    return p === 'medium';
+  }).length;
+  const lowPriorityCount = unacceptedItems.filter(i => {
+    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || i.urgency || '').toLowerCase();
+    return p === 'low';
+  }).length;
+
   const inProgressItems = items.filter(c => c.status === 'In Progress');
   const resolvedCount = items.filter(c => c.status === 'Resolved').length;
   const criticalItems = items.filter(c => c.urgency === 'high' || c.urgency === 'critical');
@@ -140,34 +190,178 @@ export default function OfficerHomeScreen({ navigation }) {
           </Card>
         </div>
 
-        {/* Incoming unaccepted queue */}
-        {unacceptedItems.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <div className="section-title" style={{ marginBottom: 0 }}>📥 Incoming AI-Assigned</div>
+        {/* Action Priority Queue with Category & Priority Filters */}
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="section-title" style={{ marginBottom: 0 }}>🚨 Action Priority Queue</div>
               <span style={{
                 background: '#FEE2E2',
                 color: COLORS.rejected,
-                fontSize: '10px',
+                fontSize: '11px',
                 fontWeight: '800',
-                padding: '2px 8px',
-                borderRadius: '9999px'
+                padding: '2px 10px',
+                borderRadius: '9999px',
+                border: '1px solid #FCA5A5'
               }}>
-                {unacceptedItems.length} NEW
+                {filteredUnaccepted.length} of {unacceptedItems.length} ACTIVE
               </span>
             </div>
+            <div style={{ fontSize: '11px', color: COLORS.textMuted, fontWeight: '600' }}>
+              Prioritize by Problem Category & Urgency
+            </div>
+          </div>
 
-            {unacceptedItems.map((item) => (
-              <Card key={item.id} style={{ backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '800', color: COLORS.textMuted }}>{item.id}</span>
+          {/* Filter 1: Urgency Priority Bar */}
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {[
+              { id: 'ALL', label: `All Priorities (${unacceptedItems.length})` },
+              { id: 'HIGH', label: `🚨 High Priority (${highPriorityCount})` },
+              { id: 'MEDIUM', label: `⚠️ Medium (${mediumPriorityCount})` },
+              { id: 'LOW', label: `🟢 Low (${lowPriorityCount})` },
+            ].map((p) => {
+              const active = priorityFilter === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPriorityFilter(p.id)}
+                  style={{
+                    backgroundColor: active ? '#0F172A' : '#FFFFFF',
+                    color: active ? '#FFFFFF' : '#334155',
+                    border: `1.5px solid ${active ? '#0F172A' : '#E2E8F0'}`,
+                    borderRadius: '20px',
+                    padding: '5px 12px',
+                    fontSize: '11px',
+                    fontWeight: active ? '800' : '600',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Filter 2: Problem Category Bar */}
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {CATEGORY_TABS.map((cat) => {
+              const active = categoryFilter === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setCategoryFilter(cat.id)}
+                  style={{
+                    backgroundColor: active ? '#0D9488' : '#FFFFFF',
+                    color: active ? '#FFFFFF' : '#475569',
+                    border: `1.5px solid ${active ? '#0D9488' : '#E2E8F0'}`,
+                    borderRadius: '20px',
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: active ? '800' : '600',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Filtered Complaint Cards */}
+          {filteredUnaccepted.length === 0 ? (
+            <Card style={{ textAlign: 'center', padding: '24px', backgroundColor: '#F8FAFC' }}>
+              <div style={{ fontSize: '28px', marginBottom: '6px' }}>🔍</div>
+              <div style={{ fontSize: '14px', fontWeight: '800', color: COLORS.textPrimary }}>
+                No complaints found for this filter
+              </div>
+              <div style={{ fontSize: '11px', color: COLORS.textMuted, marginTop: '4px' }}>
+                Try selecting "All Priorities" or "All Categories" to view incoming intake.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPriorityFilter('ALL');
+                  setCategoryFilter('ALL');
+                }}
+                style={{
+                  marginTop: '10px',
+                  backgroundColor: COLORS.primary,
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '6px 14px',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
+              >
+                Reset Filters
+              </button>
+            </Card>
+          ) : (
+            filteredUnaccepted.map((item) => (
+              <Card key={item.id} style={{ backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: COLORS.textMuted }}>{item.id}</span>
+                    <span style={{
+                      backgroundColor: '#E0F2FE',
+                      color: '#0369A1',
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      fontSize: '10px',
+                      fontWeight: '800'
+                    }}>
+                      🏷️ {item.aiInspection?.cvResult?.categoryLabel || item.categoryLabel || item.category}
+                    </span>
+                  </div>
                   <StatusBadge status={item.status} />
                 </div>
-                <h4 style={{ fontSize: '15px', fontWeight: '800', color: COLORS.textPrimary, marginBottom: '4px' }}>{item.title}</h4>
-                <div style={{ fontSize: '11px', color: COLORS.textSecondary, marginBottom: '10px' }}>📍 {item.location?.address}</div>
 
-                <AiInspectionBadge aiResult={item.aiInspection} compact />
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '6px' }}>
+                  {item.image && (
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      style={{
+                        width: '70px',
+                        height: '70px',
+                        borderRadius: '10px',
+                        objectFit: 'cover',
+                        flexShrink: 0,
+                        border: '1px solid #BFDBFE'
+                      }}
+                    />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: COLORS.textPrimary, marginBottom: '3px' }}>
+                      {item.title}
+                    </h4>
+                    <div style={{ fontSize: '11px', color: COLORS.textSecondary, marginBottom: '4px' }}>
+                      📍 {item.location?.address}
+                    </div>
+                    {item.aiInspection?.cvResult?.officerRecommendation && (
+                      <div style={{ fontSize: '10px', color: '#0369A1', fontWeight: '700' }}>
+                        🛠️ {item.aiInspection.cvResult.officerRecommendation}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
+                {/* AI Category & Priority Telemetry */}
+                <AiInspectionBadge aiResult={item.aiInspection} compact forceShowOfficer />
+
+                {/* Officer Action Bar */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                   <button
                     type="button"
@@ -192,9 +386,9 @@ export default function OfficerHomeScreen({ navigation }) {
                     type="button"
                     onClick={() => handleOpenResolve(item)}
                     style={{
-                      backgroundColor: '#F8FAFC',
+                      backgroundColor: '#FFFFFF',
                       color: COLORS.textSecondary,
-                      border: '1px solid var(--border)',
+                      border: '1px solid #CBD5E1',
                       borderRadius: '10px',
                       padding: '10px 14px',
                       fontSize: '12px',
@@ -206,9 +400,9 @@ export default function OfficerHomeScreen({ navigation }) {
                   </button>
                 </div>
               </Card>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
 
         {/* In Progress Tasks */}
         {inProgressItems.length > 0 && (

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Provider, useSelector } from 'react-redux';
+import { Provider, useSelector, useDispatch } from 'react-redux';
 import { store } from './store/store';
-import { checkAuthSession } from './store/slices/authSlice';
-import { useDispatch } from 'react-redux';
+import { checkAuthSession, logout } from './store/slices/authSlice';
 
 import SplashScreen from './screens/auth/SplashScreen';
 import LoginScreen from './screens/auth/LoginScreen';
+import RegisterScreen from './screens/auth/RegisterScreen';
 import OTPScreen from './screens/auth/OTPScreen';
 
 import HomeScreen from './screens/citizen/HomeScreen';
@@ -27,12 +27,12 @@ function AppContent() {
   const [screenHistory, setScreenHistory] = useState([]);
 
   const dispatch = useDispatch();
-  const { isAuthenticated, role } = useSelector((state) => state.auth);
+  const { isAuthenticated, role, user } = useSelector((state) => state.auth);
 
   useEffect(() => {
     // Try to restore session
     dispatch(checkAuthSession()).finally(() => {
-      setTimeout(() => setIsAppLoading(false), 1500); // Give splash time to show
+      setTimeout(() => setIsAppLoading(false), 1200);
     });
   }, [dispatch]);
 
@@ -42,8 +42,10 @@ function AppContent() {
       setCurrentScreen(homeScreen);
       setScreenHistory([homeScreen]);
     } else if (!isAppLoading) {
-      setCurrentScreen('Login');
-      setScreenHistory(['Login']);
+      if (currentScreen !== 'Register') {
+        setCurrentScreen('Login');
+        setScreenHistory(['Login']);
+      }
     }
   }, [isAuthenticated, role, isAppLoading]);
 
@@ -81,6 +83,7 @@ function AppContent() {
   const renderActiveScreen = () => {
     if (!isAuthenticated) {
       switch (currentScreen) {
+        case 'Register': return <RegisterScreen navigation={navigation} route={route} />;
         case 'OTP': return <OTPScreen navigation={navigation} route={route} />;
         case 'Login':
         default: return <LoginScreen navigation={navigation} route={route} />;
@@ -109,31 +112,162 @@ function AppContent() {
 
   const CITIZEN_NAV = [
     { screen: 'Home', icon: '🏛️', label: 'Home' },
-    { screen: 'ReportIssue', icon: '📷', label: 'Report' },
-    { screen: 'MyComplaints', icon: '📂', label: 'Complaints' },
+    { screen: 'ReportIssue', icon: '📝', label: 'Report Issue' },
+    { screen: 'MyComplaints', icon: '📋', label: 'My Complaints' },
     { screen: 'Profile', icon: '👤', label: 'Profile' },
   ];
 
   const OFFICER_NAV = [
     { screen: 'OfficerHome', icon: '📊', label: 'Dashboard' },
-    { screen: 'AssignedComplaints', icon: '📋', label: 'Tasks' },
+    { screen: 'AssignedComplaints', icon: '⚡', label: 'Assigned Tasks' },
     { screen: 'Profile', icon: '👤', label: 'Profile' },
   ];
 
   const navItems = role === 'officer' ? OFFICER_NAV : CITIZEN_NAV;
 
-  // Don't show nav on sub-screens
-  const noNavScreens = ['ResolveComplaint', 'ComplaintDetail', 'OTP'];
+  // Don't show nav on auth screens
+  const noNavScreens = ['ResolveComplaint', 'ComplaintDetail', 'OTP', 'Login', 'Register'];
   const showNav = isAuthenticated && !noNavScreens.includes(currentScreen);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--background)' }}>
+    <div className="cp-shell">
+      {/* Desktop Responsive Header (Visible on Desktop/Tablet >= 768px) */}
+      {showNav && (
+        <header className="cp-desktop-header">
+          <div className="cp-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 0 }}>
+            {/* Logo */}
+            <div
+              onClick={() => navigation.navigate(role === 'officer' ? 'OfficerHome' : 'Home')}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+            >
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: 'rgba(13, 148, 136, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                border: '1px solid rgba(255, 255, 255, 0.15)'
+              }}>
+                🏛️
+              </div>
+              <div>
+                <div style={{ color: '#FFFFFF', fontSize: '17px', fontWeight: '800', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+                  CivicPulse
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '9px', fontWeight: '700', letterSpacing: '0.04em' }}>
+                  {role === 'officer' ? 'OFFICER PORTAL' : 'MUNICIPAL GOVERNANCE'}
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation Links */}
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {navItems.map((item) => {
+                const isActive = currentScreen === item.screen;
+                return (
+                  <button
+                    key={item.screen}
+                    type="button"
+                    className={`cp-desktop-nav-link ${isActive ? 'active' : ''}`}
+                    onClick={() => navigation.navigate(item.screen)}
+                  >
+                    <span>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Right Actions: Quick Report Button + User Chip */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              {role === 'citizen' && (
+                <button
+                  type="button"
+                  onClick={() => navigation.navigate('ReportIssue')}
+                  style={{
+                    backgroundColor: COLORS.primary,
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    fontSize: '12px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 10px rgba(13, 148, 136, 0.35)'
+                  }}
+                >
+                  <span>📷</span> Report Issue
+                </button>
+              )}
+
+              {/* User Avatar + Profile Info */}
+              <div
+                onClick={() => navigation.navigate('Profile')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <img
+                  src={user?.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'}
+                  alt="User"
+                  style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
+                />
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ color: '#FFFFFF', fontSize: '12px', fontWeight: '700', lineHeight: 1.1 }}>
+                    {user?.name ? user.name.split(' ')[0] : 'Citizen'}
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '9px', fontWeight: '600' }}>
+                    {role === 'officer' ? 'Officer' : 'Citizen'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Logout Button */}
+              <button
+                type="button"
+                onClick={() => dispatch(logout())}
+                title="Logout"
+                style={{
+                  background: 'none',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '8px',
+                  color: 'rgba(255,255,255,0.6)',
+                  padding: '7px 10px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <span>🚪</span>
+              </button>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* Main Content Area */}
       <main style={{ flex: 1, width: '100%' }}>
         {renderActiveScreen()}
       </main>
 
+      {/* Mobile Bottom Navigation Bar (Visible only on screens < 768px) */}
       {showNav && (
-        <nav className="cp-nav">
+        <nav className="cp-nav cp-mobile-nav">
           {navItems.map((item) => {
             const isActive = currentScreen === item.screen;
             return (

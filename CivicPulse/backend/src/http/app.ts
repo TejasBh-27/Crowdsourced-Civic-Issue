@@ -3,11 +3,45 @@ import helmet from 'helmet';
 import cors from 'cors';
 import multer from 'multer';
 import { z } from 'zod';
+import fs from 'node:fs';
+import path from 'node:path';
 import { AppError, badRequest, unauthorized } from '../domain/errors.js';
 import { ROLES, CATEGORIES } from '../domain/constants.js';
 import type { Role, User } from '../domain/types.js';
 import type { createComplaintService } from '../services/complaintService.js';
 import type { Config } from '../config.js';
+
+const USERS_FILE = path.resolve(process.cwd(), 'data/registered_users.json');
+
+function loadDiskUsers(): any[] {
+  try {
+    if (fs.existsSync(USERS_FILE)) {
+      return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Failed reading users file:', err);
+  }
+  return [];
+}
+
+function saveDiskUser(newUser: any): any[] {
+  try {
+    const dir = path.dirname(USERS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const users = loadDiskUsers();
+    const filtered = users.filter((u: any) =>
+      u.id !== newUser.id &&
+      u.phone !== newUser.phone &&
+      (!u.email || u.email.toLowerCase() !== (newUser.email || '').toLowerCase())
+    );
+    filtered.unshift(newUser);
+    fs.writeFileSync(USERS_FILE, JSON.stringify(filtered, null, 2), 'utf-8');
+    return filtered;
+  } catch (err) {
+    console.error('Failed saving user file:', err);
+    return loadDiskUsers();
+  }
+}
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -22,7 +56,7 @@ const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const CreateSchema = z.object({
   category: z.enum(Object.keys(CATEGORIES) as [string, ...string[]]),
-  description: z.string().trim().min(10, 'Describe the issue in at least 10 characters').max(2000),
+  description: z.string().trim().min(1, 'Describe the issue').max(2000).default('Civic complaint reported by citizen'),
   title: z.string().trim().max(120).optional(),
   latitude: z.coerce.number().min(-90).max(90),
   longitude: z.coerce.number().min(-180).max(180),
@@ -40,10 +74,10 @@ const parse = <S extends z.ZodTypeAny>(schema: S, data: unknown): z.infer<S> => 
 
 // DEV ONLY: trusts headers. Replaced by JWT verification in the Auth module (config.assertSafeConfig blocks this in production).
 function devIdentity(req: Request, _res: Response, next: NextFunction): void {
-  const id = req.header('x-user-id');
-  const role = req.header('x-user-role');
-  if (!id || !(Object.values(ROLES) as string[]).includes(role ?? '')) return next(unauthorized('Send x-user-id and x-user-role (dev auth mode)'));
-  req.user = { id, role: role as Role, name: req.header('x-user-name') || id, phone: req.header('x-user-phone') };
+  const id = req.header('x-user-id') || 'CIT-4668';
+  const role = req.header('x-user-role') || 'citizen';
+  if (!(Object.values(ROLES) as string[]).includes(role)) return next(unauthorized('Send x-user-id and x-user-role (dev auth mode)'));
+  req.user = { id, role: role as Role, name: req.header('x-user-name') || 'Tejas Bhamre', phone: req.header('x-user-phone') || '9545286810' };
   next();
 }
 
@@ -67,6 +101,15 @@ export function createApp({ service, config, authMiddleware }: { service: Servic
 
   api.get('/health', (_req, res) => res.json({ ok: true }));
   api.get('/categories', (_req, res) => res.json(Object.entries(CATEGORIES).map(([id, c]) => ({ id, ...c }))));
+  
+  // Public Auth Persistence Endpoints (Loaded & Persisted on disk across restarts)
+  api.get('/auth/users', (_req, res) => res.json(loadDiskUsers()));
+  api.post('/auth/register', wrap(async (req, res) => {
+    const user = req.body;
+    const users = saveDiskUser(user);
+    res.json({ success: true, count: users.length, user });
+  }));
+
   api.use(auth);
   const me = (req: Request): User => req.user as User; // set by the auth middleware
   const pid = (req: Request): string => String(req.params.id);
@@ -78,6 +121,7 @@ export function createApp({ service, config, authMiddleware }: { service: Servic
   }));
   api.get('/complaints/mine', wrap(async (req, res) => res.json(await service.listMine(me(req)))));
   api.get('/complaints/:id', wrap(async (req, res) => res.json(await service.getForUser(me(req), pid(req)))));
+  api.delete('/complaints/:id', wrap(async (req, res) => res.json(await service.remove(me(req), pid(req)))));
   api.post('/complaints/:id/photo', photo, wrap(async (req, res) => res.status(202).json(await service.resubmitPhoto(me(req), pid(req), req.file))));
 
   // Officer

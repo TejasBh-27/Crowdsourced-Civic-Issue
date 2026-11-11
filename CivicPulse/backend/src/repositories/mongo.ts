@@ -100,6 +100,10 @@ export function createMongoRepo(): Repo {
       listByCitizen: (citizenId) => many<Complaint>(Complaint.find({ 'reportedBy.id': citizenId }).sort({ createdAt: -1 })),
       listByOfficer: (officerId, { status } = {}) =>
         many<Complaint>(Complaint.find({ 'assignedOfficer.id': officerId, ...(status ? { status } : {}) })),
+      delete: async (id) => {
+        const res = await Complaint.deleteOne({ _id: id });
+        return (res.deletedCount ?? 0) > 0;
+      },
     },
 
     wards: {
