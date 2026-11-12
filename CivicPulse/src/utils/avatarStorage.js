@@ -1,4 +1,4 @@
-import storage from './storage';
+import storage, { sessionStore } from './storage';
 
 const CUSTOM_AVATARS_KEY = 'cp_custom_avatars';
 const REGISTERED_USERS_KEY = 'cp_registered_users';
@@ -103,10 +103,10 @@ export function savePersistedAvatar(user, avatarBase64) {
 
   // 3. Update active session
   try {
-    const session = storage.getItem('user_session');
+    const session = sessionStore.getItem('user_session') || storage.getItem('user_session');
     if (session && session.user) {
       session.user.avatar = avatarBase64;
-      storage.setItem('user_session', session);
+      sessionStore.setItem('user_session', session);
     }
   } catch (e) {
     console.warn('Could not update user_session avatar:', e);

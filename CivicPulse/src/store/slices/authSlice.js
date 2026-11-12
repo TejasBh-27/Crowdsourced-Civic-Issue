@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authApi from '../../api/authApi';
-import storage from '../../utils/storage';
+import storage, { sessionStore } from '../../utils/storage';
 import { setApiUser } from '../../api/apiClient';
 import { getPersistedAvatar, savePersistedAvatar } from '../../utils/avatarStorage';
 
@@ -9,7 +9,10 @@ export const loginUser = createAsyncThunk(
   async ({ identifier, password, role }, { rejectWithValue }) => {
     try {
       const res = await authApi.login({ identifier, password, role });
-      storage.setItem('user_session', res);
+      // Store session in sessionStorage only so closing the app or launching npm run dev always starts at the Login page
+      sessionStore.setItem('user_session', res);
+      // Clean legacy localStorage session
+      storage.removeItem('user_session');
       return res;
     } catch (err) {
       return rejectWithValue(err.message || 'Login failed');
@@ -22,8 +25,6 @@ export const registerUser = createAsyncThunk(
   async (formData, { rejectWithValue }) => {
     try {
       const res = await authApi.register(formData);
-      // NOTE: Do not auto-login on registration.
-      // User must explicitly log in after registering.
       return res;
     } catch (err) {
       return rejectWithValue(err.message || 'Registration failed');
@@ -33,28 +34,17 @@ export const registerUser = createAsyncThunk(
 
 export const checkAuthSession = createAsyncThunk(
   'auth/checkAuthSession',
-  async () => {
-    const session = storage.getItem('user_session');
-    if (session && session.user) return session;
+  async (_, { rejectWithValue }) => {
+    // Clean any legacy persistent auto-login session so starting npm run dev always asks to log in first
+    storage.removeItem('user_session');
+    storage.removeItem('last_active_user');
 
-    // Auto-restore last active registered user so running `npm run dev` immediately remembers the user
-    const lastUser = storage.getItem('last_active_user') || {
-      id: 'CIT-4668',
-      name: 'Tejas Bhamre',
-      email: 'tejas.bhamre@civicpulse.gov',
-      phone: '9545286810',
-      role: 'citizen',
-      ward: 'Citizen Ward',
-      address: 'Near R.C. Patel Campus, Karwand Road, Shirpur, 425405',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
-    };
-
-    const restoredSession = {
-      token: `cp-jwt-${Date.now()}-restored`,
-      user: lastUser
-    };
-    storage.setItem('user_session', restoredSession);
-    return restoredSession;
+    // Only restore session if actively logged in during this active browser tab
+    const session = sessionStore.getItem('user_session');
+    if (session && session.user) {
+      return session;
+    }
+    return rejectWithValue('No active session. Please log in.');
   }
 );
 
@@ -75,7 +65,8 @@ export const verifyOTP = createAsyncThunk(
   async ({ phone, otp, role }, { rejectWithValue }) => {
     try {
       const res = await authApi.verifyOTP(phone, otp, role);
-      storage.setItem('user_session', res);
+      sessionStore.setItem('user_session', res);
+      storage.removeItem('user_session');
       return res;
     } catch (err) {
       return rejectWithValue(err.message);
@@ -103,7 +94,10 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
+      sessionStore.removeItem('user_session');
       storage.removeItem('user_session');
+      storage.removeItem('last_active_user');
+      setApiUser(null);
     },
     clearAuthError: (state) => {
       state.error = null;
@@ -114,8 +108,8 @@ const authSlice = createSlice({
         if (action.payload.avatar) {
           savePersistedAvatar(state.user, action.payload.avatar);
         }
-        const session = storage.getItem('user_session') || {};
-        storage.setItem('user_session', { ...session, user: state.user });
+        const session = sessionStore.getItem('user_session') || {};
+        sessionStore.setItem('user_session', { ...session, user: state.user });
       }
     }
   },
@@ -137,14 +131,13 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.role = action.payload.user.role || state.role;
         setApiUser(userWithAvatar);
-        storage.setItem('last_active_user', userWithAvatar);
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload || 'Failed to login';
       })
 
-      // Register (Creates account AND auto-logs in the newly registered user)
+      // Register (Creates account AND logs in the newly registered user)
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -161,8 +154,8 @@ const authSlice = createSlice({
           state.token = action.payload.token;
           state.role = action.payload.user.role || 'citizen';
           setApiUser(userWithAvatar);
-          storage.setItem('user_session', { ...action.payload, user: userWithAvatar });
-          storage.setItem('last_active_user', userWithAvatar);
+          sessionStore.setItem('user_session', { ...action.payload, user: userWithAvatar });
+          storage.removeItem('user_session');
         }
       })
       .addCase(registerUser.rejected, (state, action) => {
@@ -183,6 +176,11 @@ const authSlice = createSlice({
           state.role = action.payload.user.role || 'citizen';
           setApiUser(userWithAvatar);
         }
+      })
+      .addCase(checkAuthSession.rejected, (state) => {
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
       })
 
       // Legacy OTP
