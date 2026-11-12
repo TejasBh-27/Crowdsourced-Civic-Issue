@@ -6,7 +6,7 @@ export type Urgency = 'low' | 'medium' | 'high' | 'critical';
 export type CategoryId = 'pothole' | 'garbage' | 'water' | 'street_light' | 'drainage' | 'illegal_parking';
 export type DepartmentId = 'roads' | 'sanitation' | 'water' | 'electrical' | 'drainage' | 'traffic';
 
-export interface User { id: string; role: Role; name: string; phone?: string }
+export interface User { id: string; role: Role; name: string; phone?: string; email?: string }
 
 export interface PolygonGeometry { type: 'Polygon'; coordinates: number[][][] }
 export interface Ward { id?: string; code: string; name: string; city?: string; boundary: PolygonGeometry }
@@ -35,7 +35,7 @@ export interface Complaint {
   urgencyScore?: number;
   location: { type: 'Point'; coordinates: [number, number]; address?: string; accuracyM?: number };
   photo: StoredPhoto;
-  reportedBy: { id: string; name: string; phone?: string };
+  reportedBy: { id: string; name: string; phone?: string; email?: string };
   ward: string | null;
   department: string;
   assignedOfficer: { id: string; name: string } | null;
@@ -63,7 +63,7 @@ export interface Repo {
     create(doc: Complaint): Promise<Complaint>;
     getById(id: string): Promise<Complaint | null | undefined>;
     update(id: string, spec: UpdateSpec): Promise<Complaint | null | undefined>;
-    listByCitizen(citizenId: string): Promise<Complaint[]>;
+    listByCitizen(citizenId: string, phone?: string, email?: string): Promise<Complaint[]>;
     listByOfficer(officerId: string, opts?: { status?: string }): Promise<Complaint[]>;
     delete?(id: string): Promise<boolean>;
   };

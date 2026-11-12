@@ -10,8 +10,7 @@ function getUser(getState) {
   return user;
 }
 
-// Initial state hydrated from persistent storage so complaints never vanish on reload
-const storedComplaints = storage.getItem(COMPLAINTS_STORAGE_KEY) || [];
+
 
 export const fetchComplaints = createAsyncThunk(
   'complaints/fetchComplaints',
@@ -111,7 +110,7 @@ export const fetchMttrAnalytics = createAsyncThunk(
 const complaintSlice = createSlice({
   name: 'complaints',
   initialState: {
-    items: storedComplaints,
+    items: [],
     selectedComplaint: null,
     statusFilter: 'All',
     searchQuery: '',
@@ -145,11 +144,26 @@ const complaintSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Reset complaints state on logout or account switch so no stale complaints leak
+      .addCase('auth/logout', (state) => {
+        state.items = [];
+        state.selectedComplaint = null;
+        state.statusFilter = 'All';
+        state.searchQuery = '';
+      })
+      .addCase('auth/loginUser/fulfilled', (state) => {
+        state.items = [];
+        state.selectedComplaint = null;
+      })
+      .addCase('auth/registerUser/fulfilled', (state) => {
+        state.items = [];
+        state.selectedComplaint = null;
+      })
+
       .addCase(fetchComplaints.pending, (state) => { state.isLoading = true; state.error = null; })
       .addCase(fetchComplaints.fulfilled, (state, action) => {
         state.isLoading = false;
         state.items = action.payload;
-        storage.setItem(COMPLAINTS_STORAGE_KEY, action.payload);
       })
       .addCase(fetchComplaints.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
 
@@ -164,7 +178,6 @@ const complaintSlice = createSlice({
           state.items[idx] = action.payload;
         }
         state.selectedComplaint = action.payload;
-        storage.setItem(COMPLAINTS_STORAGE_KEY, state.items);
       })
       .addCase(createComplaint.rejected, (state, action) => { state.isSubmitting = false; state.error = action.payload; })
 
@@ -174,7 +187,6 @@ const complaintSlice = createSlice({
         const idx = state.items.findIndex(c => c.id === action.payload.id);
         if (idx !== -1) state.items[idx] = action.payload;
         if (state.selectedComplaint?.id === action.payload.id) state.selectedComplaint = action.payload;
-        storage.setItem(COMPLAINTS_STORAGE_KEY, state.items);
       })
       .addCase(resubmitPhoto.rejected, (state, action) => { state.isSubmitting = false; state.error = action.payload; })
 
@@ -184,7 +196,6 @@ const complaintSlice = createSlice({
         const idx = state.items.findIndex(c => c.id === action.payload.id);
         if (idx !== -1) state.items[idx] = action.payload;
         if (state.selectedComplaint?.id === action.payload.id) state.selectedComplaint = action.payload;
-        storage.setItem(COMPLAINTS_STORAGE_KEY, state.items);
       })
       .addCase(acceptComplaintTask.rejected, (state, action) => { state.isSubmitting = false; state.error = action.payload; })
 
@@ -194,7 +205,6 @@ const complaintSlice = createSlice({
         const idx = state.items.findIndex(c => c.id === action.payload.id);
         if (idx !== -1) state.items[idx] = action.payload;
         if (state.selectedComplaint?.id === action.payload.id) state.selectedComplaint = action.payload;
-        storage.setItem(COMPLAINTS_STORAGE_KEY, state.items);
       })
       .addCase(rejectComplaintTask.rejected, (state, action) => { state.isSubmitting = false; state.error = action.payload; })
 
@@ -204,7 +214,6 @@ const complaintSlice = createSlice({
         const idx = state.items.findIndex(c => c.id === action.payload.id);
         if (idx !== -1) state.items[idx] = action.payload;
         if (state.selectedComplaint?.id === action.payload.id) state.selectedComplaint = action.payload;
-        storage.setItem(COMPLAINTS_STORAGE_KEY, state.items);
       })
       .addCase(resolveComplaint.rejected, (state, action) => { state.isSubmitting = false; state.error = action.payload; })
 
@@ -214,7 +223,6 @@ const complaintSlice = createSlice({
         if (state.selectedComplaint?.id === deletedId) {
           state.selectedComplaint = null;
         }
-        storage.setItem(COMPLAINTS_STORAGE_KEY, state.items);
       })
 
       .addCase(fetchMttrAnalytics.fulfilled, (state, action) => { state.mttrStats = action.payload; });

@@ -123,7 +123,7 @@ export function createComplaintService({ repo, ai, notifier, storage, wardRouter
       urgency: null,
       location: { type: 'Point', coordinates: [input.longitude, input.latitude], address: input.address, accuracyM: input.accuracyM },
       photo: stored,
-      reportedBy: { id: user.id, name: user.name, phone: user.phone },
+      reportedBy: { id: user.id, name: user.name, phone: user.phone, email: user.email },
       ward: ward?.code ?? null,
       department: departmentFor(category) as string,
       assignedOfficer: null,
@@ -149,7 +149,7 @@ export function createComplaintService({ repo, ai, notifier, storage, wardRouter
     return updated;
   }
 
-  const listMine = (user: User) => repo.complaints.listByCitizen(user.id);
+  const listMine = (user: User) => repo.complaints.listByCitizen(user.id, user.phone, user.email);
 
   async function getForUser(user: User, id: string): Promise<Complaint> {
     const c = await repo.complaints.getById(id);
@@ -168,9 +168,6 @@ export function createComplaintService({ repo, ai, notifier, storage, wardRouter
     requireOfficer(user);
     const c = await repo.complaints.getById(id);
     if (!c) throw notFound('Complaint not found');
-    if (user.role === ROLES.OFFICER && c.assignedOfficer && c.assignedOfficer.id !== user.id) {
-      throw forbidden('This complaint is not assigned to you');
-    }
     return c;
   }
 
@@ -204,25 +201,39 @@ export function createComplaintService({ repo, ai, notifier, storage, wardRouter
   }
 
   async function start(user: User, id: string): Promise<Complaint> {
-    await ownedByOfficer(user, id);
-    return transition(id, [STATUS.WORKER_ASSIGNED], STATUS.IN_PROGRESS, {}, 'Work started', user.id);
+    const c = await ownedByOfficer(user, id);
+    if (c.status === STATUS.IN_PROGRESS) return c;
+    const assignedOfficer = c.assignedOfficer || { id: user.id, name: user.name };
+    return transition(
+      id,
+      [STATUS.VERIFIED, STATUS.WORKER_ASSIGNED],
+      STATUS.IN_PROGRESS,
+      { assignedOfficer },
+      `Officer ${user.name || 'Officer'} accepted task & dispatched crew`,
+      user.id
+    );
   }
 
   async function resolve(user: User, id: string, { note }: { note?: string }, file?: UploadedFile): Promise<Complaint> {
-    await ownedByOfficer(user, id);
+    const c = await ownedByOfficer(user, id);
+    if (c.status === STATUS.RESOLVED) return c;
     if (!note || note.trim().length < 5) throw badRequest('A resolution note is required');
     const photoUrl = file ? (await storage.save(file.buffer, file.mimetype)).url : null;
     const done = await transition(
-      id, [STATUS.IN_PROGRESS], STATUS.RESOLVED,
+      id,
+      [STATUS.IN_PROGRESS, STATUS.VERIFIED, STATUS.WORKER_ASSIGNED],
+      STATUS.RESOLVED,
       { resolution: { note: note.trim(), photoUrl, resolvedAt: iso(now()) } },
-      note.trim(), user.id
+      note.trim(),
+      user.id
     );
     await sms(done, `CivicPulse: your report ${id} has been resolved. ${note.trim()}`);
     return done;
   }
 
   async function reject(user: User, id: string, reason: string): Promise<Complaint> {
-    await ownedByOfficer(user, id);
+    const c = await ownedByOfficer(user, id);
+    if (c.status === STATUS.REJECTED) return c;
     if (!reason || reason.trim().length < 5) throw badRequest('A rejection reason (min 5 characters) is required');
     const trimmed = reason.trim();
     const done = await transition(

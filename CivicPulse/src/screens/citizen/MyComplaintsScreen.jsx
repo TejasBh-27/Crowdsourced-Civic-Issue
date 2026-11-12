@@ -5,6 +5,7 @@ import Card from '../../components/Card';
 import StatusBadge from '../../components/StatusBadge';
 import ComplaintLifecycleStepper from '../../components/ComplaintLifecycleStepper';
 import COLORS from '../../constants/colors';
+import { isComplaintOwnedByUser } from '../../utils/userFilter';
 
 const FILTERS = [
   { id: 'All', label: 'All', icon: '📋' },
@@ -17,30 +18,34 @@ const FILTERS = [
 
 export default function MyComplaintsScreen({ navigation }) {
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
   const { items, statusFilter, searchQuery, isLoading } = useSelector((state) => state.complaints);
   const [localSearch, setLocalSearch] = useState(searchQuery || '');
   const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchComplaints());
-  }, [dispatch]);
+  }, [dispatch, user?.id, user?.phone]);
 
   useEffect(() => {
     const timer = setTimeout(() => dispatch(setSearchQuery(localSearch)), 300);
     return () => clearTimeout(timer);
   }, [localSearch, dispatch]);
 
-  // Compute live counts for EVERY filter chip
+  // Strict per-user isolation: only complaints belonging to this logged-in citizen
+  const userComplaints = (items || []).filter(c => isComplaintOwnedByUser(c, user));
+
+  // Compute live counts for EVERY filter chip based exclusively on userComplaints
   const counts = {
-    All: items.length,
-    Submitted: items.filter(c => c.status === 'Submitted' || c.status === 'Pending').length,
-    Verified_Assigned: items.filter(c => c.status === 'Verified_Assigned' || c.status === 'verified').length,
-    'In Progress': items.filter(c => c.status === 'In Progress' || c.status === 'in_progress').length,
-    Resolved: items.filter(c => c.status === 'Resolved' || c.status === 'resolved').length,
-    Rejected_Invalid_Image: items.filter(c => c.status === 'Rejected_Invalid_Image' || c.status === 'Rejected' || c.aiInspection?.aiVerified === false).length,
+    All: userComplaints.length,
+    Submitted: userComplaints.filter(c => c.status === 'Submitted' || c.status === 'Pending').length,
+    Verified_Assigned: userComplaints.filter(c => c.status === 'Verified_Assigned' || c.status === 'verified').length,
+    'In Progress': userComplaints.filter(c => c.status === 'In Progress' || c.status === 'in_progress').length,
+    Resolved: userComplaints.filter(c => c.status === 'Resolved' || c.status === 'resolved').length,
+    Rejected_Invalid_Image: userComplaints.filter(c => c.status === 'Rejected_Invalid_Image' || c.status === 'Rejected' || c.aiInspection?.aiVerified === false).length,
   };
 
-  const filtered = items.filter(item => {
+  const filtered = userComplaints.filter(item => {
     let matchStatus = true;
     if (statusFilter === 'Submitted') {
       matchStatus = item.status === 'Submitted' || item.status === 'Pending';
@@ -258,7 +263,7 @@ export default function MyComplaintsScreen({ navigation }) {
         {/* Count Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', paddingLeft: '4px', paddingRight: '4px' }}>
           <div style={{ fontSize: '12px', color: COLORS.textMuted, fontWeight: '700' }}>
-            Showing {filtered.length} of {items.length} total complaint{items.length !== 1 ? 's' : ''}
+            Showing {filtered.length} of {userComplaints.length} total complaint{userComplaints.length !== 1 ? 's' : ''}
           </div>
           {statusFilter !== 'All' && (
             <button
@@ -287,8 +292,46 @@ export default function MyComplaintsScreen({ navigation }) {
           [...Array(3)].map((_, i) => (
             <div key={i} className="skeleton" style={{ height: '180px', borderRadius: '18px' }} />
           ))
+        ) : userComplaints.length === 0 ? (
+          /* Dedicated Empty State for New Citizen with Zero Complaints */
+          <div style={{
+            textAlign: 'center',
+            padding: '54px 20px',
+            backgroundColor: '#FFFFFF',
+            borderRadius: '20px',
+            border: '1.5px dashed var(--border)',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '10px' }}>📋</div>
+            <div style={{ fontSize: '18px', fontWeight: '800', color: COLORS.textPrimary, marginBottom: '6px' }}>
+              No Complaints Filed Yet
+            </div>
+            <div style={{ fontSize: '13px', color: COLORS.textMuted, marginBottom: '20px', maxWidth: '380px', margin: '0 auto 20px', lineHeight: 1.5 }}>
+              You haven't submitted any municipal reports yet. Spot a pothole, garbage dump, streetlight failure, or water leakage? File your first complaint now!
+            </div>
+            <button
+              type="button"
+              onClick={() => navigation?.navigate && navigation.navigate('ReportIssue')}
+              style={{
+                backgroundColor: COLORS.primary,
+                color: '#fff',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '12px 24px',
+                fontSize: '13px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(13, 148, 136, 0.3)'
+              }}
+            >
+              <span>➕</span> Report First Issue Now →
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
-          /* Empty state */
+          /* Empty state when filter has no matches */
           <div style={{
             textAlign: 'center',
             padding: '54px 20px',

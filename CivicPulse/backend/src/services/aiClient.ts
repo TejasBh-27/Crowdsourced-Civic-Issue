@@ -9,13 +9,13 @@ import type { AiClient, AiResult, Urgency } from '../domain/types.js';
 export const AiResultSchema = z.object({
   isValid: z.boolean(),                       // does the photo genuinely show the reported issue?
   confidence: z.number().min(0).max(1),
-  rejectionReason: z.string().optional(),     // shown to the citizen (via SMS) when isValid=false
+  rejectionReason: z.string().nullable().optional(),     // shown to the citizen (via SMS) when isValid=false
   urgency: z.object({
     score: z.number().min(0).max(100),
     level: z.enum([URGENCY.LOW, URGENCY.MEDIUM, URGENCY.HIGH, URGENCY.CRITICAL]),
   }),
-  cv: z.record(z.any()).optional(),
-  nlp: z.record(z.any()).optional(),
+  cv: z.record(z.any()).nullable().optional(),
+  nlp: z.record(z.any()).nullable().optional(),
 });
 
 export const levelFromScore = (s: number): Urgency => (s >= 85 ? 'critical' : s >= 70 ? 'high' : s >= 40 ? 'medium' : 'low');

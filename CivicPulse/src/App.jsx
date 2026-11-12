@@ -479,10 +479,61 @@ function AppContent() {
   );
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('CivicPulse Runtime Error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '60px 20px', textAlign: 'center', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' }}>
+          <div style={{ fontSize: '54px', marginBottom: '16px' }}>🏛️</div>
+          <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#0F172A', marginBottom: '8px' }}>
+            CivicPulse System Alert
+          </h2>
+          <p style={{ color: '#64748B', maxWidth: '480px', margin: '0 auto 20px', fontSize: '13px', lineHeight: 1.5 }}>
+            {this.state.error?.message || 'An interface render notice occurred. Tap below to reload the application.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            style={{
+              backgroundColor: '#0D9488',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '12px 24px',
+              fontSize: '13px',
+              fontWeight: '800',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(13, 148, 136, 0.3)'
+            }}
+          >
+            <span>↺</span> Reload Application
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
     <Provider store={store}>
-      <AppContent />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </Provider>
   );
 }

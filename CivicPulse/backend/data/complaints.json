@@ -1,0 +1,518 @@
+[
+  {
+    "id": "CMP-2026-000106",
+    "title": "Road Potholes & Damage at Makhamalabad",
+    "category": "pothole",
+    "description": "Road Potholes & Damage reported near Makhamalabad, Nashik, Maharashtra, 422001. Immediate municipal resolution requested.",
+    "status": "in_progress",
+    "urgency": "medium",
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        73.7847,
+        20.0367
+      ],
+      "address": "Makhamalabad, Nashik, Maharashtra, 422001"
+    },
+    "photo": {
+      "key": "71f1001c-b568-4d61-8a94-258b2e88b9d1.jpg",
+      "url": "/uploads/71f1001c-b568-4d61-8a94-258b2e88b9d1.jpg",
+      "mime": "image/jpeg"
+    },
+    "reportedBy": {
+      "id": "CIT-5189",
+      "name": "TT",
+      "phone": "9545286813",
+      "email": "kamleshkapure94@gmail.com"
+    },
+    "ward": null,
+    "department": "roads",
+    "assignedOfficer": {
+      "id": "OFF-1268",
+      "name": "Bhamre"
+    },
+    "assignedWorker": null,
+    "aiAttempts": 1,
+    "timeline": [
+      {
+        "status": "submitted",
+        "note": "Report received; location is outside all known wards",
+        "by": "CIT-5189",
+        "at": "2026-11-12T05:50:07.541Z"
+      },
+      {
+        "status": "verified",
+        "note": "Verified by AI (urgency medium); no officer found for ward/department, needs manual routing",
+        "by": "system",
+        "at": "2026-11-12T05:50:08.224Z"
+      },
+      {
+        "status": "in_progress",
+        "note": "Officer Bhamre accepted task & dispatched crew",
+        "by": "OFF-1268",
+        "at": "2026-11-12T10:06:14.044Z"
+      }
+    ],
+    "createdAt": "2026-11-12T05:50:07.541Z",
+    "updatedAt": "2026-11-12T10:06:14.044Z",
+    "ai": {
+      "isValid": true,
+      "confidence": 0.9798,
+      "rejectionReason": null,
+      "urgency": {
+        "score": 58,
+        "level": "medium"
+      },
+      "cv": {
+        "model": "CivicPulse EfficientNet-B0 (civic_pulse_model.onnx)",
+        "isCivicIssue": true,
+        "canSubmit": true,
+        "detectedImageType": "Civic Problem: Road Potholes & Damage",
+        "clarityScore": 100,
+        "laplacianVariance": 2252.67,
+        "brightness": 106.3,
+        "contrast": 54.9,
+        "dimensions": "640×359",
+        "algorithm": "EfficientNet-B0 ONNX + Laplacian Sharpness Check",
+        "issueDetected": true,
+        "predictedCategory": "pothole",
+        "categoryKey": "pothole",
+        "categoryLabel": "Road Potholes & Damage",
+        "categoryConfidence": 0.9798,
+        "allCategoryProbs": {
+          "street_light": 0.0002,
+          "water": 0.0002,
+          "garbage": 0.0006,
+          "drainage": 0.0002,
+          "illegal_parking": 0.0008,
+          "pothole": 0.998
+        },
+        "userSelectedCategory": "pothole",
+        "isUserCategoryCorrect": true,
+        "categoryStatus": "CONFIRMED",
+        "categoryVerificationMessage": "✅ Category Confirmed: Photo accurately depicts 'Road Potholes & Damage' (98.0% ML confidence).",
+        "predictedPriority": "MEDIUM",
+        "priorityScore": 58,
+        "slaHours": "48 Hours",
+        "visualCues": [
+          "Asphalt surface cavitation & depth crater",
+          "Sub-base aggregate exposure & wheel impact risk",
+          "Road structural degradation in traffic corridor"
+        ],
+        "officerRecommendation": "Deploy PWD Cold-Mix Asphalt Patching Crew with road roller (24h SLA).",
+        "routedDepartment": "Roads & Infrastructure"
+      },
+      "nlp": {
+        "department": "roads",
+        "departmentLabel": "Roads & Infrastructure",
+        "confidence": 0.4841,
+        "topFeatures": [
+          "immediate",
+          "municipal",
+          "potholes",
+          "damage",
+          "near",
+          "road"
+        ],
+        "allProbs": {
+          "drainage": 0.1021,
+          "electrical": 0.0925,
+          "roads": 0.4841,
+          "sanitation": 0.1354,
+          "traffic": 0.1057,
+          "water": 0.0802
+        },
+        "model": "TF-IDF (1-2 ngram, 4000 feat) + LogisticRegression (sklearn 1.5)"
+      }
+    },
+    "urgencyScore": 58,
+    "needsManualRouting": true
+  },
+  {
+    "id": "CMP-2026-000105",
+    "title": "Streetlight Failure at Live Coordinates: 20.03670°N",
+    "category": "street_light",
+    "description": "Streetlight Failure reported near Live Coordinates: 20.03670°N, 73.78470°E. Immediate municipal resolution requested.",
+    "status": "rejected",
+    "urgency": "low",
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        73.7847,
+        20.0367
+      ],
+      "address": "Live Coordinates: 20.03670°N, 73.78470°E"
+    },
+    "photo": {
+      "key": "ccf146d5-09e0-4731-9f94-f2f142958827.webp",
+      "url": "/uploads/ccf146d5-09e0-4731-9f94-f2f142958827.webp",
+      "mime": "image/webp"
+    },
+    "reportedBy": {
+      "id": "CIT-5189",
+      "name": "TT",
+      "phone": "9545286813",
+      "email": "kamleshkapure94@gmail.com"
+    },
+    "ward": null,
+    "department": "electrical",
+    "assignedOfficer": null,
+    "assignedWorker": null,
+    "aiAttempts": 1,
+    "timeline": [
+      {
+        "status": "submitted",
+        "note": "Report received; location is outside all known wards",
+        "by": "CIT-5189",
+        "at": "2026-11-12T05:49:22.929Z"
+      },
+      {
+        "status": "verified",
+        "note": "Verified by AI (urgency low); no officer found for ward/department, needs manual routing",
+        "by": "system",
+        "at": "2026-11-12T05:49:23.664Z"
+      },
+      {
+        "status": "rejected",
+        "note": "Rejected by officer: Duplicate report already being fixed by crew.",
+        "by": "OFF-9902",
+        "at": "2026-11-12T10:01:40.109Z"
+      }
+    ],
+    "createdAt": "2026-11-12T05:49:22.929Z",
+    "updatedAt": "2026-11-12T10:01:40.109Z",
+    "ai": {
+      "isValid": true,
+      "confidence": 0.9498,
+      "rejectionReason": null,
+      "urgency": {
+        "score": 41,
+        "level": "low"
+      },
+      "cv": {
+        "model": "CivicPulse EfficientNet-B0 (civic_pulse_model.onnx)",
+        "isCivicIssue": true,
+        "canSubmit": true,
+        "detectedImageType": "Civic Problem: Streetlight Failure",
+        "clarityScore": 96,
+        "laplacianVariance": 610.53,
+        "brightness": 49.9,
+        "contrast": 50.8,
+        "dimensions": "500×500",
+        "algorithm": "EfficientNet-B0 ONNX + Laplacian Sharpness Check",
+        "issueDetected": true,
+        "predictedCategory": "street_light",
+        "categoryKey": "street_light",
+        "categoryLabel": "Streetlight Failure",
+        "categoryConfidence": 0.9498,
+        "allCategoryProbs": {
+          "street_light": 0.623,
+          "water": 0.1121,
+          "garbage": 0,
+          "drainage": 0,
+          "illegal_parking": 0.1975,
+          "pothole": 0.0673
+        },
+        "userSelectedCategory": "street_light",
+        "isUserCategoryCorrect": true,
+        "categoryStatus": "CONFIRMED",
+        "categoryVerificationMessage": "✅ Category Confirmed: Photo accurately depicts 'Streetlight Failure' (95.0% ML confidence).",
+        "predictedPriority": "LOW",
+        "priorityScore": 41,
+        "slaHours": "72 Hours",
+        "visualCues": [
+          "Vertical lighting mast pole / luminaire fixture",
+          "Non-functional public luminaire in nocturnal zone",
+          "Public safety darkness & night visibility hazard"
+        ],
+        "officerRecommendation": "Assign Electrical Grid Bucket Truck to inspect luminaire and replace LED driver (24h SLA).",
+        "routedDepartment": "Electrical Grid Maintenance"
+      },
+      "nlp": {
+        "department": "electrical",
+        "departmentLabel": "Electrical Grid Maintenance",
+        "confidence": 0.3788,
+        "topFeatures": [
+          "immediate",
+          "live",
+          "municipal",
+          "streetlight",
+          "failure",
+          "near"
+        ],
+        "allProbs": {
+          "drainage": 0.1168,
+          "electrical": 0.3788,
+          "roads": 0.1304,
+          "sanitation": 0.1873,
+          "traffic": 0.1027,
+          "water": 0.084
+        },
+        "model": "TF-IDF (1-2 ngram, 4000 feat) + LogisticRegression (sklearn 1.5)"
+      }
+    },
+    "urgencyScore": 41,
+    "needsManualRouting": true,
+    "rejectionReason": "Duplicate report already being fixed by crew."
+  },
+  {
+    "id": "CMP-2026-000104",
+    "title": "Road Potholes & Cracks",
+    "category": "pothole",
+    "description": "Large pothole on sector 12 main crossway causing vehicle damage.",
+    "status": "rejected",
+    "urgency": null,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        74.8841,
+        21.3527
+      ],
+      "address": "Sector 12, Main Crossway"
+    },
+    "photo": {
+      "key": "bd8e58e6-beeb-408f-9acf-aabd09ff4876.jpg",
+      "url": "/uploads/bd8e58e6-beeb-408f-9acf-aabd09ff4876.jpg",
+      "mime": "image/jpeg"
+    },
+    "reportedBy": {
+      "id": "CIT-5189",
+      "name": "TT",
+      "phone": "9545286813",
+      "email": "kamleshkapure94@gmail.com"
+    },
+    "ward": null,
+    "department": "roads",
+    "assignedOfficer": null,
+    "assignedWorker": null,
+    "aiAttempts": 1,
+    "timeline": [
+      {
+        "status": "submitted",
+        "note": "Report received; location is outside all known wards",
+        "by": "CIT-5189",
+        "at": "2026-11-12T05:46:18.636Z"
+      },
+      {
+        "status": "rejected",
+        "note": "Rejected by AI: Photo is too small (137 bytes). Please upload a full-resolution image taken from 2–4 feet of the defect.",
+        "by": "system",
+        "at": "2026-11-12T05:46:18.782Z"
+      }
+    ],
+    "createdAt": "2026-11-12T05:46:18.635Z",
+    "updatedAt": "2026-11-12T05:46:18.782Z",
+    "ai": {
+      "isValid": false,
+      "confidence": 0,
+      "rejectionReason": "Photo is too small (137 bytes). Please upload a full-resolution image taken from 2–4 feet of the defect.",
+      "urgency": {
+        "score": 0,
+        "level": "low"
+      },
+      "cv": {
+        "model": "CivicPulse EfficientNet-B0 (civic_pulse_model.onnx)",
+        "isCivicIssue": false,
+        "canSubmit": false,
+        "detectedImageType": "Corrupted / Empty Photo",
+        "clarityScore": 0,
+        "laplacianVariance": null,
+        "algorithm": null,
+        "isUserCategoryCorrect": false,
+        "categoryStatus": "REJECTED_NON_CIVIC",
+        "categoryVerificationMessage": "❌ Photo is too small (137 bytes). Please upload a full-resolution image taken from 2–4 feet of the defect.",
+        "predictedCategory": null,
+        "predictedPriority": "LOW",
+        "officerRecommendation": "Submission blocked: Citizen must upload a photo of a real civic issue.",
+        "file_bytes": 137,
+        "min_required": 3000
+      },
+      "nlp": null
+    },
+    "rejectionReason": "Photo is too small (137 bytes). Please upload a full-resolution image taken from 2–4 feet of the defect."
+  },
+  {
+    "id": "CMP-2026-101",
+    "title": "Pothole Hazard on MG Road",
+    "category": "pothole",
+    "description": "Deep road crater causing heavy bike skids near metro pillar 42. Urgent patching required.",
+    "status": "in_progress",
+    "urgency": "high",
+    "urgencyScore": 82,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        77.209,
+        28.6139
+      ],
+      "address": "Near Pillar 42, MG Road, Ward 14"
+    },
+    "photo": {
+      "key": "seed-pothole.jpg",
+      "url": "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600",
+      "mime": "image/jpeg"
+    },
+    "reportedBy": {
+      "id": "CIT-4668",
+      "name": "Tejas Bhamre",
+      "phone": "9545286810",
+      "email": "tejas.bhamre@civicpulse.gov"
+    },
+    "ward": "W-14",
+    "department": "roads",
+    "assignedOfficer": {
+      "id": "OFF-9902",
+      "name": "Inspector Rajesh Kumar"
+    },
+    "assignedWorker": null,
+    "aiAttempts": 1,
+    "timeline": [
+      {
+        "status": "submitted",
+        "note": "Report received via CivicPulse mobile portal",
+        "by": "CIT-4668",
+        "at": "2026-10-10T09:00:00Z"
+      },
+      {
+        "status": "verified",
+        "note": "Verified by AI (urgency high); routed to Inspector Rajesh Kumar",
+        "by": "system",
+        "at": "2026-10-10T09:01:00Z"
+      },
+      {
+        "status": "in_progress",
+        "note": "Officer Inspector Rajesh Kumar accepted task & dispatched crew",
+        "by": "OFF-9902",
+        "at": "2026-11-12T09:59:24.762Z"
+      }
+    ],
+    "createdAt": "2026-10-10T09:00:00Z",
+    "updatedAt": "2026-11-12T09:59:24.763Z"
+  },
+  {
+    "id": "CMP-2026-102",
+    "title": "Garbage Dump Overflowing Near Market",
+    "category": "garbage",
+    "description": "Community dump bin overflowing on pedestrian walkway with foul odor and stray animals.",
+    "status": "in_progress",
+    "urgency": "medium",
+    "urgencyScore": 65,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        77.2105,
+        28.6152
+      ],
+      "address": "Block C Park Outer Lane, Ward 14"
+    },
+    "photo": {
+      "key": "seed-garbage.jpg",
+      "url": "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=600",
+      "mime": "image/jpeg"
+    },
+    "reportedBy": {
+      "id": "CIT-4481",
+      "name": "Ananya Sharma",
+      "phone": "9876543210",
+      "email": "ananya@civicpulse.gov"
+    },
+    "ward": "W-14",
+    "department": "sanitation",
+    "assignedOfficer": {
+      "id": "OFF-4011",
+      "name": "Inspector Sunita Rao"
+    },
+    "assignedWorker": null,
+    "aiAttempts": 1,
+    "timeline": [
+      {
+        "status": "submitted",
+        "note": "Report received",
+        "by": "CIT-4481",
+        "at": "2026-10-09T08:15:00Z"
+      },
+      {
+        "status": "verified",
+        "note": "Verified by AI; routed to Sanitation Department",
+        "by": "system",
+        "at": "2026-10-09T08:16:00Z"
+      },
+      {
+        "status": "in_progress",
+        "note": "Officer Inspector Rajesh Kumar accepted task & dispatched crew",
+        "by": "OFF-9902",
+        "at": "2026-11-12T10:01:40.096Z"
+      }
+    ],
+    "createdAt": "2026-10-09T08:15:00Z",
+    "updatedAt": "2026-11-12T10:01:40.096Z"
+  },
+  {
+    "id": "CMP-2026-103",
+    "title": "Street Light Pole Damaged & Flickering Dark",
+    "category": "street_light",
+    "description": "Streetlight #SL-414 is non-functional creating dark alley near girls school.",
+    "status": "resolved",
+    "urgency": "medium",
+    "urgencyScore": 70,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        77.207,
+        28.612
+      ],
+      "address": "Lane 4, Near Model School, Ward 14"
+    },
+    "photo": {
+      "key": "seed-light.jpg",
+      "url": "https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=600",
+      "mime": "image/jpeg"
+    },
+    "reportedBy": {
+      "id": "CIT-8821",
+      "name": "Rohit Verma",
+      "phone": "9811122334"
+    },
+    "ward": "W-14",
+    "department": "electrical",
+    "assignedOfficer": {
+      "id": "OFF-9902",
+      "name": "Inspector Rajesh Kumar"
+    },
+    "assignedWorker": null,
+    "aiAttempts": 1,
+    "resolution": {
+      "note": "Replaced sodium vapor bulb with high-efficiency 100W LED unit and restored wiring.",
+      "photoUrl": "https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?w=600",
+      "resolvedAt": "2026-10-06T16:45:00Z"
+    },
+    "timeline": [
+      {
+        "status": "submitted",
+        "note": "Report received",
+        "by": "CIT-8821",
+        "at": "2026-10-04T10:00:00Z"
+      },
+      {
+        "status": "verified",
+        "note": "Verified by AI; routed to Electrical Dept",
+        "by": "system",
+        "at": "2026-10-04T10:01:00Z"
+      },
+      {
+        "status": "in_progress",
+        "note": "Crew assigned on-site",
+        "by": "OFF-9902",
+        "at": "2026-10-05T09:00:00Z"
+      },
+      {
+        "status": "resolved",
+        "note": "LED light installed & MTTR logged",
+        "by": "OFF-9902",
+        "at": "2026-10-06T16:45:00Z"
+      }
+    ],
+    "createdAt": "2026-10-04T10:00:00Z",
+    "updatedAt": "2026-10-06T16:45:00Z"
+  }
+]

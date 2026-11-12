@@ -253,8 +253,9 @@ export default function ReportIssueScreen({ route, navigation }) {
       isBlurryTest: false,
       reportedBy: {
         id: user?.id || 'CIT-4668',
-        name: user?.name || 'Tejas Bhamre',
-        phone: user?.phone || '+91 95452 86810'
+        name: user?.name || 'Citizen',
+        phone: user?.phone || '',
+        email: user?.email || ''
       }
     };
 

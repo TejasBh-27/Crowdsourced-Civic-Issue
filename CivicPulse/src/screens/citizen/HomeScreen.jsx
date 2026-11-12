@@ -5,6 +5,7 @@ import Card from '../../components/Card';
 import StatusBadge from '../../components/StatusBadge';
 import COLORS from '../../constants/colors';
 import STRINGS from '../../constants/strings';
+import { isComplaintOwnedByUser } from '../../utils/userFilter';
 
 const StatCard = ({ count, label, subtitle, color, bg, icon }) => (
   <div style={{
@@ -59,11 +60,14 @@ export default function HomeScreen({ navigation }) {
     dispatch(fetchComplaints());
     const h = new Date().getHours();
     setGreeting(h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening');
-  }, [dispatch]);
+  }, [dispatch, user?.id, user?.phone]);
 
-  const pendingCount = items.filter(c => c.status === 'Submitted' || c.status === 'Pending').length;
-  const inProgressCount = items.filter(c => c.status === 'In Progress' || c.status === 'Verified_Assigned').length;
-  const resolvedCount = items.filter(c => c.status === 'Resolved').length;
+  // Strict per-user isolation: only complaints belonging to this logged-in citizen
+  const userComplaints = (items || []).filter(c => isComplaintOwnedByUser(c, user));
+
+  const pendingCount = userComplaints.filter(c => c.status === 'Submitted' || c.status === 'Pending').length;
+  const inProgressCount = userComplaints.filter(c => c.status === 'In Progress' || c.status === 'Verified_Assigned').length;
+  const resolvedCount = userComplaints.filter(c => c.status === 'Resolved').length;
 
   const handleOpenDetail = (item) => {
     dispatch(setSelectedComplaint(item));
@@ -211,7 +215,7 @@ export default function HomeScreen({ navigation }) {
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
                 >
-                  <span>📋</span> My Reports ({items.length})
+                  <span>📋</span> My Reports ({userComplaints.length})
                 </button>
               </div>
             </div>
@@ -424,7 +428,7 @@ export default function HomeScreen({ navigation }) {
                 Live updates and officer progress on reports in your area
               </div>
             </div>
-            {items.length > 0 && (
+            {userComplaints.length > 0 && (
               <span
                 onClick={() => navigation.navigate('MyComplaints')}
                 style={{
@@ -437,7 +441,7 @@ export default function HomeScreen({ navigation }) {
                   gap: '4px'
                 }}
               >
-                View All ({items.length}) →
+                View All ({userComplaints.length}) →
               </span>
             )}
           </div>
@@ -448,8 +452,8 @@ export default function HomeScreen({ navigation }) {
                 <div key={i} className="skeleton" style={{ height: '140px', borderRadius: '16px' }} />
               ))}
             </div>
-          ) : items.length === 0 ? (
-            /* Rich Empty State for New Users (Like Tejas Bhamre) */
+          ) : userComplaints.length === 0 ? (
+            /* Rich Empty State for New Users */
             <div style={{
               textAlign: 'center',
               padding: '48px 24px',
@@ -500,7 +504,7 @@ export default function HomeScreen({ navigation }) {
             </div>
           ) : (
             <div className="cp-complaints-grid">
-              {items.slice(0, 4).map((item, idx) => (
+              {userComplaints.slice(0, 4).map((item, idx) => (
                 <div
                   key={item.id}
                   className="animate-fade-in"

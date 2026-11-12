@@ -70,15 +70,15 @@ export default function OfficerHomeScreen({ navigation }) {
   });
 
   const highPriorityCount = unacceptedItems.filter(i => {
-    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || item.urgency || '').toLowerCase();
+    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || i.urgency || '').toLowerCase();
     return p === 'high' || p === 'critical';
   }).length;
   const mediumPriorityCount = unacceptedItems.filter(i => {
-    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || item.urgency || '').toLowerCase();
+    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || i.urgency || '').toLowerCase();
     return p === 'medium';
   }).length;
   const lowPriorityCount = unacceptedItems.filter(i => {
-    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || item.urgency || '').toLowerCase();
+    const p = (i.aiInspection?.mlPriority?.level || i.aiInspection?.cvResult?.predictedPriority || i.urgency || '').toLowerCase();
     return p === 'low';
   }).length;
 

@@ -1,5 +1,17 @@
 [
   {
+    "id": "CIT-5189",
+    "name": "TT",
+    "email": "kamleshkapure94@gmail.com",
+    "phone": "9545286813",
+    "role": "citizen",
+    "password": "123456",
+    "ward": "Citizen Ward",
+    "address": "City Resident",
+    "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+    "createdAt": "2026-11-11T16:58:08.829Z"
+  },
+  {
     "id": "CIT-4668",
     "name": "Tejas Bhamre",
     "email": "tejas.bhamre@civicpulse.gov",

@@ -13,10 +13,11 @@ export function setApiUser(user) {
 export function getApiHeaders(user = currentUser) {
   if (!user) return {};
   return {
-    'x-user-id': user.id || 'CIT-4668',
+    'x-user-id': user.id || '',
     'x-user-role': user.role || 'citizen',
-    'x-user-name': user.name || 'Tejas Bhamre',
-    'x-user-phone': user.phone || '9545286810',
+    'x-user-name': user.name || 'Citizen',
+    'x-user-phone': user.phone || '',
+    'x-user-email': user.email || '',
   };
 }
 

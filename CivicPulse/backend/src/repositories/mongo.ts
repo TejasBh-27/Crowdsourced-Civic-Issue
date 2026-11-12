@@ -97,9 +97,18 @@ export function createMongoRepo(): Repo {
         if (timeline) update.$push = { timeline };
         return one<Complaint>(Complaint.findOneAndUpdate(filter, update, { new: true }));
       },
-      listByCitizen: (citizenId) => many<Complaint>(Complaint.find({ 'reportedBy.id': citizenId }).sort({ createdAt: -1 })),
+      listByCitizen: (citizenId, phone, email) => {
+        const orClauses: Record<string, unknown>[] = [{ 'reportedBy.id': citizenId }];
+        if (phone && phone.replace(/\D/g, '').length >= 10) {
+          orClauses.push({ 'reportedBy.phone': { $regex: phone.replace(/\D/g, '').slice(-10) + '$' } });
+        }
+        if (email) {
+          orClauses.push({ 'reportedBy.email': new RegExp(`^${email}$`, 'i') });
+        }
+        return many<Complaint>(Complaint.find({ $or: orClauses }).sort({ createdAt: -1 }));
+      },
       listByOfficer: (officerId, { status } = {}) =>
-        many<Complaint>(Complaint.find({ 'assignedOfficer.id': officerId, ...(status ? { status } : {}) })),
+        many<Complaint>(Complaint.find(status ? { status } : {}).sort({ createdAt: -1 })),
       delete: async (id) => {
         const res = await Complaint.deleteOne({ _id: id });
         return (res.deletedCount ?? 0) > 0;

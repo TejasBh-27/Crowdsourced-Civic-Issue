@@ -8,6 +8,7 @@ import { API_CONFIG, COMPLAINT_STATUS } from '../constants/api';
 import aiFastApi from './aiFastApi';
 import { apiGet, apiPost, apiPostForm, apiDelete, checkBackendHealth, getApiHeaders } from './apiClient';
 import storage from '../utils/storage';
+import { isComplaintOwnedByUser } from '../utils/userFilter';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // In-memory mock data (used as fallback when backend is unreachable)
@@ -265,6 +266,18 @@ function mapBackendStatus(s) {
   return map[s] || s;
 }
 
+function getEffectiveOfficer(user, officerInfo) {
+  if (user && user.role === 'officer') return user;
+  return {
+    id: officerInfo?.id || user?.id || 'OFF-9902',
+    role: 'officer',
+    name: officerInfo?.name || user?.name || 'Inspector Rajesh Kumar',
+    department: officerInfo?.department || 'Roads & Infrastructure',
+    phone: user?.phone || '',
+    email: user?.email || '',
+  };
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Public API — smart router with guaranteed LocalStorage persistence
 // ──────────────────────────────────────────────────────────────────────────────
@@ -277,35 +290,72 @@ export const expressGatewayApi = {
    * If backend is down: returns persistent local storage (survives any page reload).
    */
   async fetchComplaints(user) {
-    const localList = getStoredComplaints();
+    const allStoredList = getStoredComplaints();
+    const isOfficer = user?.role === 'officer';
 
     try {
       if (await isBackendOnline()) {
-        const path = user?.role === 'officer' ? '/officer/complaints' : '/complaints/mine';
+        const path = isOfficer ? '/officer/complaints' : '/complaints/mine';
         const backendData = await apiGet(path, user);
-        const normalizedBackend = backendData.map(normalizeBackendComplaint);
+        const normalizedBackend = (Array.isArray(backendData) ? backendData : []).map(normalizeBackendComplaint);
 
-        // Merge backend data with local storage (preserving any locally submitted complaints)
-        const mergedMap = new Map();
-
-        // 1. Put all local complaints first
-        for (const item of localList) {
-          if (item?.id) mergedMap.set(item.id, item);
+        // Update the master persistent store with backend updates
+        const masterMap = new Map();
+        for (const item of allStoredList) {
+          if (item?.id) masterMap.set(item.id, item);
         }
-
-        // 2. Put backend complaints (updates status, officer assignment, etc.)
         for (const bItem of normalizedBackend) {
-          const localItem = mergedMap.get(bItem.id);
-          mergedMap.set(bItem.id, {
+          const localItem = masterMap.get(bItem.id);
+          let mergedStatus = bItem.status;
+          if (localItem) {
+            const isLocalAdvanced =
+              (localItem.status === 'In Progress' && (bItem.status === 'Verified_Assigned' || bItem.status === 'Submitted')) ||
+              (localItem.status === 'Resolved' && bItem.status !== 'Resolved') ||
+              (localItem.status === 'Rejected' && (bItem.status === 'Verified_Assigned' || bItem.status === 'Submitted'));
+            if (isLocalAdvanced) {
+              mergedStatus = localItem.status;
+              if (localItem.status === 'In Progress' && bItem.status !== 'In Progress') {
+                apiPost(`/officer/complaints/${bItem.id}/start`, {}, getEffectiveOfficer(user, localItem.assignedOfficer)).catch(() => {});
+              }
+            }
+          }
+
+          masterMap.set(bItem.id, {
             ...localItem,
             ...bItem,
+            status: mergedStatus,
+            rejectionReason: (mergedStatus === 'Rejected' ? (localItem?.rejectionReason || bItem.rejectionReason) : bItem.rejectionReason),
+            resolutionNote: (mergedStatus === 'Resolved' ? (localItem?.resolutionNote || bItem.resolutionNote) : bItem.resolutionNote),
+            resolutionImage: (mergedStatus === 'Resolved' ? (localItem?.resolutionImage || bItem.resolutionImage) : bItem.resolutionImage),
             image: bItem.image && !bItem.image.startsWith('blob:') ? bItem.image : (localItem?.image || bItem.image)
           });
         }
 
-        const mergedList = Array.from(mergedMap.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-        saveStoredComplaints(mergedList);
-        return mergedList;
+        const updatedMasterList = Array.from(masterMap.values()).sort(
+          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        );
+        saveStoredComplaints(updatedMasterList);
+
+        // Officers have complete administrative access to ALL complaints submitted across the city!
+        if (isOfficer) {
+          return updatedMasterList;
+        }
+
+        // For citizen: return backend complaints plus any locally submitted un-synced complaints belonging to this user
+        const citizenComplaintsMap = new Map();
+        for (const bItem of normalizedBackend) {
+          if (bItem?.id) citizenComplaintsMap.set(bItem.id, bItem);
+        }
+        for (const item of updatedMasterList) {
+          if (item?.id && isComplaintOwnedByUser(item, user)) {
+            if (!citizenComplaintsMap.has(item.id)) {
+              citizenComplaintsMap.set(item.id, item);
+            }
+          }
+        }
+        return Array.from(citizenComplaintsMap.values()).sort(
+          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        );
       }
     } catch (e) {
       console.warn('Backend fetch failed, using persistent local storage:', e.message);
@@ -313,7 +363,14 @@ export const expressGatewayApi = {
     }
 
     await new Promise(r => setTimeout(r, API_CONFIG.MOCK_DELAY_MS));
-    return localList;
+
+    // Offline / fallback mode
+    if (isOfficer) {
+      // Officers have full administrative access to all complaints!
+      return allStoredList;
+    }
+    // Citizen mode: strictly return complaints owned by THIS citizen!
+    return allStoredList.filter(item => isComplaintOwnedByUser(item, user));
   },
 
   async fetchComplaintById(id, user) {
@@ -367,6 +424,14 @@ export const expressGatewayApi = {
           normalized.image = persistentImage || normalized.image;
         }
 
+        // Guarantee active user reporter identity is preserved on the complaint
+        normalized.reportedBy = {
+          id: user?.id || normalized.reportedBy?.id || 'CIT-4668',
+          name: user?.name || normalized.reportedBy?.name || 'Citizen',
+          phone: user?.phone || normalized.reportedBy?.phone || '',
+          email: user?.email || normalized.reportedBy?.email || ''
+        };
+
         // Save to persistent storage immediately
         const currentList = getStoredComplaints();
         const existingIdx = currentList.findIndex(c => c.id === normalized.id);
@@ -412,10 +477,11 @@ export const expressGatewayApi = {
       },
       status: isCvValid ? 'Verified_Assigned' : 'Rejected_Invalid_Image',
       urgency: isCvValid ? (aiInspection.mlPriority?.badge || 'medium') : 'low',
-      reportedBy: payload.reportedBy || {
-        id: user?.id || 'CIT-4668',
-        name: user?.name || 'Tejas Bhamre',
-        phone: user?.phone || '+91 95452 86810'
+      reportedBy: {
+        id: user?.id || payload.reportedBy?.id || 'CIT-4668',
+        name: user?.name || payload.reportedBy?.name || 'Citizen',
+        phone: user?.phone || payload.reportedBy?.phone || '',
+        email: user?.email || payload.reportedBy?.email || ''
       },
       assignedOfficer: isCvValid ? aiInspection.assignedOfficer : null,
       aiInspection,
@@ -490,15 +556,22 @@ export const expressGatewayApi = {
   },
 
   async acceptComplaint(id, officerInfo, user) {
+    const officerUser = getEffectiveOfficer(user, officerInfo);
     try {
       if (await isBackendOnline()) {
-        const data = await apiPost(`/officer/complaints/${id}/start`, {}, user);
+        const data = await apiPost(`/officer/complaints/${id}/start`, {}, officerUser);
         const normalized = normalizeBackendComplaint(data);
+        normalized.status = 'In Progress';
+        if (officerInfo) normalized.assignedOfficer = officerInfo;
         const list = getStoredComplaints();
         const idx = list.findIndex(c => c.id === id);
-        if (idx !== -1) list[idx] = normalized;
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...normalized, status: 'In Progress' };
+        } else {
+          list.unshift({ ...normalized, status: 'In Progress' });
+        }
         saveStoredComplaints(list);
-        return normalized;
+        return list[idx !== -1 ? idx : 0];
       }
     } catch (e) {
       console.warn('Backend accept failed, using local storage:', e.message);
@@ -520,17 +593,23 @@ export const expressGatewayApi = {
 
   async rejectComplaint(id, reason, officerInfo, user) {
     const trimmedReason = (reason || '').trim() || 'Task rejected by officer.';
+    const officerUser = getEffectiveOfficer(user, officerInfo);
     try {
       if (await isBackendOnline()) {
-        const data = await apiPost(`/officer/complaints/${id}/reject`, { reason: trimmedReason }, user);
+        const data = await apiPost(`/officer/complaints/${id}/reject`, { reason: trimmedReason }, officerUser);
         const normalized = normalizeBackendComplaint(data);
         normalized.status = 'Rejected';
         normalized.rejectionReason = trimmedReason;
+        if (officerInfo) normalized.assignedOfficer = officerInfo;
         const list = getStoredComplaints();
         const idx = list.findIndex(c => c.id === id);
-        if (idx !== -1) list[idx] = normalized;
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...normalized, status: 'Rejected', rejectionReason: trimmedReason };
+        } else {
+          list.unshift({ ...normalized, status: 'Rejected', rejectionReason: trimmedReason });
+        }
         saveStoredComplaints(list);
-        return normalized;
+        return list[idx !== -1 ? idx : 0];
       }
     } catch (e) {
       console.warn('Backend reject failed, using local storage:', e.message);
@@ -559,6 +638,7 @@ export const expressGatewayApi = {
   },
 
   async resolveComplaint(id, note, resolutionImage, officerInfo, resolutionFile, user) {
+    const officerUser = getEffectiveOfficer(user, officerInfo);
     let persistentResImage = resolutionImage;
     if (resolutionFile) {
       try {
@@ -575,19 +655,26 @@ export const expressGatewayApi = {
           const form = new FormData();
           form.append('photo', resolutionFile);
           form.append('note', note || 'Resolved');
-          data = await apiPostForm(`/officer/complaints/${id}/resolve`, form, user);
+          data = await apiPostForm(`/officer/complaints/${id}/resolve`, form, officerUser);
         } else {
-          data = await apiPost(`/officer/complaints/${id}/resolve`, { note: note || 'Resolved' }, user);
+          data = await apiPost(`/officer/complaints/${id}/resolve`, { note: note || 'Resolved' }, officerUser);
         }
         const normalized = normalizeBackendComplaint(data);
+        normalized.status = COMPLAINT_STATUS.RESOLVED;
         if (!normalized.resolutionImage && persistentResImage) {
           normalized.resolutionImage = persistentResImage;
         }
+        if (officerInfo) normalized.assignedOfficer = officerInfo;
+        if (note) normalized.resolutionNote = note;
         const list = getStoredComplaints();
         const idx = list.findIndex(c => c.id === id);
-        if (idx !== -1) list[idx] = normalized;
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...normalized, status: COMPLAINT_STATUS.RESOLVED };
+        } else {
+          list.unshift({ ...normalized, status: COMPLAINT_STATUS.RESOLVED });
+        }
         saveStoredComplaints(list);
-        return normalized;
+        return list[idx !== -1 ? idx : 0];
       }
     } catch (e) {
       console.warn('Backend resolve failed, using local storage:', e.message);
@@ -644,4 +731,5 @@ export const expressGatewayApi = {
   }
 };
 
+export { isComplaintOwnedByUser };
 export default expressGatewayApi;

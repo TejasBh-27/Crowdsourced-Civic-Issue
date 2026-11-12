@@ -7,6 +7,7 @@ import { compressImageToBase64, getPersistedAvatar, savePersistedAvatar, removeP
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import COLORS from '../../constants/colors';
+import { isComplaintOwnedByUser } from '../../utils/userFilter';
 
 const WARDS = [
   'Ward 14 - Central Zone',
@@ -30,10 +31,11 @@ export default function ProfileScreen({ navigation }) {
 
   const isOfficer = role === 'officer';
 
-  // Stats calculation
-  const resolvedCount = items.filter(c => c.status === 'Resolved').length;
-  const activeCount = items.filter(c => c.status === 'In Progress' || c.status === 'Verified_Assigned').length;
-  const civicPoints = Math.max(50, (resolvedCount * 25) + (activeCount * 10) + (items.length * 5));
+  // Stats calculation strictly scoped to this citizen's complaints
+  const userComplaints = isOfficer ? items : (items || []).filter(c => isComplaintOwnedByUser(c, user));
+  const resolvedCount = userComplaints.filter(c => c.status === 'Resolved').length;
+  const activeCount = userComplaints.filter(c => c.status === 'In Progress' || c.status === 'Verified_Assigned').length;
+  const civicPoints = Math.max(50, (resolvedCount * 25) + (activeCount * 10) + (userComplaints.length * 5));
 
   // =========================================================================
   // 1. LIVE DEVICE LOCATION STATE (AUTO-DETECTED REAL GPS)
@@ -835,7 +837,7 @@ export default function ProfileScreen({ navigation }) {
             <span style={{ fontSize: '20px' }}>📋</span>
           </div>
           <div style={{ fontSize: '28px', fontWeight: '900', color: COLORS.primaryDark, marginTop: '4px' }}>
-            {items.length}
+            {userComplaints.length}
           </div>
           <div style={{ fontSize: '11px', color: COLORS.textMuted, fontWeight: '600', marginTop: '2px' }}>
             Civic issues reported

@@ -78,7 +78,13 @@ function devIdentity(req: Request, _res: Response, next: NextFunction): void {
   const id = req.header('x-user-id') || 'CIT-4668';
   const role = req.header('x-user-role') || 'citizen';
   if (!(Object.values(ROLES) as string[]).includes(role)) return next(unauthorized('Send x-user-id and x-user-role (dev auth mode)'));
-  req.user = { id, role: role as Role, name: req.header('x-user-name') || 'Tejas Bhamre', phone: req.header('x-user-phone') || '9545286810' };
+  req.user = {
+    id,
+    role: role as Role,
+    name: req.header('x-user-name') || 'Citizen',
+    phone: req.header('x-user-phone') || '',
+    email: req.header('x-user-email') || '',
+  };
   next();
 }
 
