@@ -139,6 +139,7 @@ export default function ReportIssueScreen({ route, navigation }) {
     }
     setPhotoError('');
     setPhotoFile(file);
+    setHasUserManuallySelectedCategory(false);
 
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(file));

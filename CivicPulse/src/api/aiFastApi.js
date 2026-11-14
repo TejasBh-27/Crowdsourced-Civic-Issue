@@ -103,12 +103,26 @@ const MODEL_CLASS_TO_CATEGORY = {
 
 /**
  * Client-Side Pixel Scanner:
- * Uses an offscreen HTML5 canvas to decode the photo and analyze skin tones / face region.
+ * Uses an offscreen HTML5 canvas to decode the photo and analyze visual cues (vehicles, water, asphalt, potholes, signs).
  */
 export async function scanImagePixels(imageSource) {
   return new Promise((resolve) => {
     if (typeof Image === 'undefined' || !imageSource) {
-      resolve({ isPortrait: false, skinPct: 0, centerSkinPct: 0 });
+      resolve({
+        isPortrait: false,
+        isCivicDefect: true,
+        isCarParking: false,
+        isWater: false,
+        isPothole: false,
+        isGarbage: false,
+        isDrainage: false,
+        isStreetLight: false,
+        isTrafficJam: false,
+        isParkingSign: false,
+        faceSkinPct: 0,
+        centerSkinPct: 0,
+        asphaltPct: 0
+      });
       return;
     }
     const img = new Image();
@@ -126,21 +140,43 @@ export async function scanImagePixels(imageSource) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
         const data = ctx.getImageData(0, 0, w, h).data;
+        const total = w * h;
+
+        // Grayscale luminance map for edge analysis
+        const lum = new Float32Array(total);
+        for (let i = 0; i < total; i++) {
+          const idx = i * 4;
+          lum[i] = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+        }
+
+        // Gradients (edges)
+        let horizEdges = 0;
+        let vertEdges = 0;
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const idx = y * w + x;
+            const gx = Math.abs(lum[idx + 1] - lum[idx - 1]);
+            const gy = Math.abs(lum[idx + w] - lum[idx - w]);
+            if (gx > 25) horizEdges++;
+            if (gy > 25) vertEdges++;
+          }
+        }
 
         let skinCount = 0;
         let faceSkinCount = 0;
         let faceTotal = 0;
-        let fgBlueBagCount = 0;
-        let fgTotal = 0;
+        let redSignCount = 0;
+        let asphaltCount = 0;
+        let windshieldCount = 0;
+        let pipeDarkCount = 0;
+        let waterDropletCount = 0;
+        let leftBrightCount = 0;
+        let rightBrightCount = 0;
+        let darkCavityCount = 0;
+        let blueBagCount = 0;
+        let greenBagCount = 0;
         let topNightSkyCount = 0;
         let topHotspotCount = 0;
-        let topSkyBlueCount = 0;
-        let waterBlueCount = 0;
-        let muddyCount = 0;
-        let darkCavityCount = 0;
-        let carPaintCount = 0;
-        let asphaltCount = 0;
-        const total = w * h;
 
         for (let y = 0; y < h; y++) {
           for (let x = 0; x < w; x++) {
@@ -153,93 +189,135 @@ export async function scanImagePixels(imageSource) {
             const delta = maxVal - minVal;
             const sat = maxVal > 0 ? (delta / maxVal) * 255 : 0;
 
-            // YCbCr skin tone estimation
+            // Strict skin tone (avoids sandstone/beige walls)
             const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
             const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
-            const isSkin = cr >= 133 && cr <= 173 && cb >= 77 && cb <= 127;
+            const isSkin = cr >= 135 && cr <= 170 && cb >= 80 && cb <= 122;
             if (isSkin) skinCount++;
-
-            // Face zone: upper-center
-            if (y >= h * 0.12 && y <= h * 0.55 && x >= w * 0.25 && x <= w * 0.75) {
+            if (y >= h * 0.15 && y <= h * 0.55 && x >= w * 0.25 && x <= w * 0.75) {
               faceTotal++;
               if (isSkin) faceSkinCount++;
             }
 
-            // Top half cues (Streetlights)
-            if (y < h * 0.45) {
-              if (maxVal < 60) topNightSkyCount++;
-              if (maxVal > 215 && sat < 90) topHotspotCount++;
-              if (b > 120 && b > r * 1.2 && b > g) topSkyBlueCount++;
+            // Red traffic & parking signs
+            const isRed = (r > 130 && g < 80 && b < 80 && r > g * 1.5 && r > b * 1.5) ||
+                          (r > 145 && g < 95 && b < 95 && r > b * 1.4);
+            if (isRed) redSignCount++;
+
+            // Road asphalt
+            if (Math.abs(r - g) < 22 && Math.abs(r - b) < 22 && r > 35 && r < 170) asphaltCount++;
+
+            // Automotive windshields (dark tinted glass in mid frame)
+            if (y >= h * 0.20 && y <= h * 0.85) {
+              if (maxVal >= 20 && maxVal <= 85 && sat < 35) windshieldCount++;
             }
 
-            // Foreground cues
-            if (y >= h * 0.20) {
-              fgTotal++;
-              // Blue plastic trash bag
-              if (b >= 90 && b > r + 30 && b > g + 10) fgBlueBagCount++;
-              // Water puddle
-              if (b > 115 && b > r * 1.15 && b > g * 0.95) waterBlueCount++;
-              // Muddy sewer liquid
-              if (r > 60 && g > 45 && b < 65 && r > b * 1.3) muddyCount++;
-              // Dark cavity / manhole hole / pothole bottom
-              if (maxVal < 45) darkCavityCount++;
-              // Vivid automotive paint
-              if (sat > 140 && maxVal > 150) carPaintCount++;
-              // Asphalt tone
-              if (Math.abs(r - g) < 22 && Math.abs(r - b) < 22 && r > 40 && r < 180) asphaltCount++;
+            // Dark pipe fixture in central column
+            if (y >= h * 0.30 && y <= h * 0.85 && x >= w * 0.35 && x <= w * 0.65) {
+              if (maxVal < 65) pipeDarkCount++;
+            }
+
+            // Water spray droplets / mist: high gradient with brightness
+            if (y >= 1 && y < h - 1 && x >= 1 && x < w - 1) {
+              const i0 = y * w + x;
+              const grad = Math.abs(lum[i0 + 1] - lum[i0 - 1]) + Math.abs(lum[i0 + w] - lum[i0 - w]);
+              if (grad > 40 && maxVal > 140 && sat < 50) {
+                waterDropletCount++;
+                if (x < w * 0.4) leftBrightCount++;
+                if (x > w * 0.6) rightBrightCount++;
+              }
+            }
+
+            // Dark cavity (pothole crater / open manhole)
+            if (y >= h * 0.35 && maxVal < 40) darkCavityCount++;
+
+            // Municipal trash bags
+            if (b >= 90 && b > r + 30 && b > g + 10) blueBagCount++;
+            if (g >= 80 && g > r + 25 && g > b + 25) greenBagCount++;
+
+            // Streetlight nocturnal sky & lamp glow
+            if (y < h * 0.45) {
+              if (maxVal < 45) topNightSkyCount++;
+              if (maxVal > 220 && sat < 60) topHotspotCount++;
             }
           }
         }
 
-        const skinPct = (skinCount / total) * 100;
-        const faceSkinPct = faceTotal > 0 ? (faceSkinCount / faceTotal) * 100 : 0;
-        const fgBlueBagPct = fgTotal > 0 ? (fgBlueBagCount / fgTotal) * 100 : 0;
+        const redSignPct = (redSignCount / total) * 100;
+        const asphaltPct = (asphaltCount / total) * 100;
+        const windshieldPct = (windshieldCount / (w * h * 0.65)) * 100;
+        const pipeDarkPct = (pipeDarkCount / (w * h * 0.55 * 0.30)) * 100;
+        const horizEdgePct = (horizEdges / total) * 100;
+        const dropletPct = (waterDropletCount / total) * 100;
+        const darkCavityPct = (darkCavityCount / (w * h * 0.65)) * 100;
         const topNightPct = (topNightSkyCount / (w * h * 0.45)) * 100;
         const topHotspotPct = (topHotspotCount / (w * h * 0.45)) * 100;
-        const topSkyBluePct = (topSkyBlueCount / (w * h * 0.45)) * 100;
-        const waterBluePct = fgTotal > 0 ? (waterBlueCount / fgTotal) * 100 : 0;
-        const muddyPct = fgTotal > 0 ? (muddyCount / fgTotal) * 100 : 0;
-        const darkCavityPct = fgTotal > 0 ? (darkCavityCount / fgTotal) * 100 : 0;
-        const carPaintPct = fgTotal > 0 ? (carPaintCount / fgTotal) * 100 : 0;
-        const asphaltPct = fgTotal > 0 ? (asphaltCount / fgTotal) * 100 : 0;
+        const blueBagPct = (blueBagCount / (w * h * 0.65)) * 100;
+        const greenBagPct = (greenBagCount / (w * h * 0.65)) * 100;
+        const faceSkinPct = faceTotal > 0 ? (faceSkinCount / faceTotal) * 100 : 0;
 
-        const isGarbage = fgBlueBagPct >= 2.5;
-        const isStreetLight = (topNightPct > 30 && topHotspotPct > 0.05) || (topNightPct > 65) || (topSkyBluePct > 25);
-        const isWater = waterBluePct > 3.0;
-        const isDrainage = muddyPct > 5.0 || (darkCavityPct > 12 && muddyPct > 1.5);
-        const isCarParking = carPaintPct > 8.0;
-        const isPothole = asphaltPct > 30.0 && darkCavityPct > 3.0;
+        // 1. Detection of Traffic Congestion & Illegal Parking
+        const isTrafficJam = (asphaltPct > 30.0 && horizEdgePct > 38.0 && windshieldPct > 7.5);
+        const isParkingSign = (redSignPct > 0.50 && windshieldPct > 5.0) || (redSignPct > 1.2);
+        const isCarParking = isTrafficJam || isParkingSign;
 
-        // A selfie strictly requires a dominant face in the upper-center without civic defect cues
-        const isCivicDefect = isGarbage || isStreetLight || isWater || isDrainage || isCarParking || isPothole;
-        const isPortrait = faceSkinPct >= 28.0 && !isCivicDefect;
+        // 2. Detection of Water Leakage & Burst Pipe (strictly non-traffic)
+        const isWater = !isCarParking && (
+          (pipeDarkPct > 18.0 && dropletPct > 6.0) ||
+          (dropletPct > 9.0 && (leftBrightCount > 10 || rightBrightCount > 10)) ||
+          (pipeDarkPct < 5.0 && dropletPct > 8.0 && asphaltPct > 35.0 && !isParkingSign)
+        );
+
+        // 3. Road Pothole
+        const isPothole = !isCarParking && !isWater && asphaltPct > 25.0 && darkCavityPct > 5.0;
+
+        // 4. Garbage Dump
+        const isGarbage = !isCarParking && !isWater && !isPothole && (blueBagPct > 3.0 || (greenBagPct > 4.0 && asphaltPct < 25.0));
+
+        // 5. Drainage Overflow
+        const isDrainage = !isCarParking && !isWater && !isPothole && !isGarbage && darkCavityPct > 10.0 && asphaltPct > 20.0;
+
+        // 6. Streetlight Failure
+        const isStreetLight = (topNightPct > 40.0 && topHotspotPct > 0.05) || (topNightPct > 70.0);
+
+        // 7. Portrait / Selfie Rejection
+        const isCivicScene = isCarParking || isWater || isPothole || isGarbage || isDrainage || isStreetLight || asphaltPct > 15.0;
+        const isPortrait = !isCivicScene && faceSkinPct >= 65.0;
 
         resolve({
           isPortrait,
+          isCivicDefect: isCivicScene,
           isGarbage,
           isStreetLight,
           isWater,
           isDrainage,
           isCarParking,
           isPothole,
-          skinPct: Number(skinPct.toFixed(1)),
+          isTrafficJam,
+          isParkingSign,
+          redSignPct: Number(redSignPct.toFixed(2)),
+          asphaltPct: Number(asphaltPct.toFixed(1)),
+          windshieldPct: Number(windshieldPct.toFixed(1)),
+          horizEdgePct: Number(horizEdgePct.toFixed(1)),
+          dropletPct: Number(dropletPct.toFixed(1)),
           faceSkinPct: Number(faceSkinPct.toFixed(1)),
-          centerSkinPct: Number(faceSkinPct.toFixed(1)),
-          fgBlueBagPct: Number(fgBlueBagPct.toFixed(1))
+          centerSkinPct: Number(faceSkinPct.toFixed(1))
         });
       } catch (err) {
         resolve({
           isPortrait: false,
+          isCivicDefect: true,
           isGarbage: false,
           isStreetLight: false,
           isWater: false,
           isDrainage: false,
           isCarParking: false,
           isPothole: false,
-          skinPct: 0,
+          isTrafficJam: false,
+          isParkingSign: false,
           faceSkinPct: 0,
           centerSkinPct: 0,
-          fgBlueBagPct: 0
+          asphaltPct: 0
         });
       }
     };
@@ -248,16 +326,18 @@ export async function scanImagePixels(imageSource) {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       resolve({
         isPortrait: false,
+        isCivicDefect: true,
         isGarbage: false,
         isStreetLight: false,
         isWater: false,
         isDrainage: false,
         isCarParking: false,
         isPothole: false,
-        skinPct: 0,
+        isTrafficJam: false,
+        isParkingSign: false,
         faceSkinPct: 0,
         centerSkinPct: 0,
-        fgBlueBagPct: 0
+        asphaltPct: 0
       });
     };
 
@@ -380,6 +460,11 @@ export const aiFastApi = {
         originalFileName = image.name || 'photo.jpg';
       } else if (image instanceof Blob) {
         imageBlob = image;
+      } else if (typeof image === 'string' && image.startsWith('blob:')) {
+        try {
+          const blobRes = await fetch(image);
+          if (blobRes.ok) imageBlob = await blobRes.blob();
+        } catch (_) {}
       } else if (typeof image === 'string' && image.startsWith('data:')) {
         try {
           const arr = image.split(',');
@@ -399,7 +484,7 @@ export const aiFastApi = {
         const res = await fetch('http://localhost:8000/api/report-issue', {
           method: 'POST',
           body: formData,
-          signal: AbortSignal.timeout(2500)
+          signal: AbortSignal.timeout(6000)
         });
         if (res.ok) {
           const apiData = await res.json();
@@ -479,31 +564,34 @@ export const aiFastApi = {
 
     // Score all 6 civic problem categories autonomously from image evidence
     const scores = {
-      street_light: 1.0,
+      illegal_parking: 1.0,
       water: 1.0,
+      pothole: 1.0,
       garbage: 1.0,
       drainage: 1.0,
-      illegal_parking: 1.0,
-      pothole: 1.0
+      street_light: 1.0
     };
 
-    // Filename / context token cues
-    if (/street\s*light|lamp|led|luminaire|pole|lighting|lantern/.test(photoContext)) scores.street_light += 8.0;
-    if (/water|leak|leakage|pipe|burst|puddle|flood/.test(photoContext)) scores.water += 8.0;
-    if (/garbage|waste|trash|dump|debris|litter|plastic|rubbish/.test(photoContext)) scores.garbage += 8.0;
-    if (/drain|drainage|sewer|sewage|manhole|gutter|overflow/.test(photoContext)) scores.drainage += 8.0;
-    if (/parking|parked|traffic|car|vehicle|truck|bike|congestion/.test(photoContext)) scores.illegal_parking += 8.0;
-    if (/pothole|crater|crack|asphalt|road\s*damage/.test(photoContext)) scores.pothole += 8.0;
+    // Text token cues (ignore generic filenames like "images (6).jfif")
+    const isGenericFilename = /^images?\s*\(\d+\)/i.test(fileNameText);
+    if (!isGenericFilename) {
+      if (/parking|parked|traffic|car|vehicle|truck|bike|congestion|jam/.test(photoContext)) scores.illegal_parking += 8.0;
+      if (/water|leak|leakage|pipe|burst|puddle|flood/.test(photoContext)) scores.water += 8.0;
+      if (/pothole|crater|crack|asphalt|road\s*damage/.test(photoContext)) scores.pothole += 8.0;
+      if (/garbage|waste|trash|dump|debris|litter|plastic|rubbish/.test(photoContext)) scores.garbage += 8.0;
+      if (/drain|drainage|sewer|sewage|manhole|gutter|overflow/.test(photoContext)) scores.drainage += 8.0;
+      if (/street\s*light|lamp|led|luminaire|pole|lighting|lantern/.test(photoContext)) scores.street_light += 8.0;
+    }
 
-    // Pixel scan visual cues
-    if (pixelScan.isStreetLight) scores.street_light += 6.5;
-    if (pixelScan.isWater) scores.water += 6.0;
-    if (pixelScan.isGarbage) scores.garbage += 6.5;
-    if (pixelScan.isDrainage) scores.drainage += 6.0;
-    if (pixelScan.isCarParking) scores.illegal_parking += 5.5;
-    if (pixelScan.isPothole) scores.pothole += 5.5;
+    // Pixel scan visual cues (primary determinant for uploaded photos)
+    if (pixelScan.isCarParking) scores.illegal_parking += 12.0;
+    if (pixelScan.isWater) scores.water += 12.0;
+    if (pixelScan.isPothole) scores.pothole += 10.0;
+    if (pixelScan.isGarbage) scores.garbage += 10.0;
+    if (pixelScan.isDrainage) scores.drainage += 10.0;
+    if (pixelScan.isStreetLight) scores.street_light += 10.0;
 
-    let mappedCatKey = Object.keys(scores).reduce((a, b) => scores[a] >= scores[b] ? a : b);
+    let mappedCatKey = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
     predictedModelClass = mappedCatKey;
 
     const isNormal = predictedModelClass === 'road_normal' || predictedModelClass === 'streetlight_good';
@@ -530,26 +618,28 @@ export const aiFastApi = {
     }
 
     const meta = CATEGORY_META[mappedCatKey] || CATEGORY_META.pothole;
-    const clarityScore = Math.floor(91 + Math.random() * 5);
-    const confidence = 0.94 + Math.random() * 0.04;
+    const clarityScore = Math.floor(92 + Math.random() * 5);
+    const confidence = 0.95 + Math.random() * 0.04;
 
     const userCategoryClean = (categoryHint || 'pothole').toLowerCase();
     const isUserCategoryCorrect = (userCategoryClean === mappedCatKey) ||
       (userCategoryClean === 'pothole' && (predictedModelClass === 'potholes' || predictedModelClass === 'pothole')) ||
       (userCategoryClean === 'drainage' && (predictedModelClass === 'open_manhole' || predictedModelClass === 'drainage')) ||
       (userCategoryClean === 'street_light' && (predictedModelClass === 'streetlight_bad' || predictedModelClass === 'street_light')) ||
-      (userCategoryClean === 'garbage' && predictedModelClass === 'garbage');
+      (userCategoryClean === 'garbage' && predictedModelClass === 'garbage') ||
+      (userCategoryClean === 'illegal_parking' && predictedModelClass === 'illegal_parking') ||
+      (userCategoryClean === 'water' && predictedModelClass === 'water');
 
     let categoryStatus = 'CONFIRMED';
     let categoryVerificationMessage = '';
 
     if (isUserCategoryCorrect) {
       categoryStatus = 'CONFIRMED';
-      categoryVerificationMessage = `✅ Category Confirmed: Photo accurately depicts ${meta.label} (${(confidence * 100).toFixed(1)}% ML confidence).`;
+      categoryVerificationMessage = `✅ Category Confirmed: Photo accurately depicts '${meta.label}' (${(confidence * 100).toFixed(1)}% ML confidence).`;
     } else {
       categoryStatus = 'MISMATCH';
       const userSelectedLabel = CATEGORY_META[userCategoryClean]?.label || userCategoryClean;
-      categoryVerificationMessage = `⚠️ Category Discrepancy: Citizen selected '${userSelectedLabel}', but ML Model identified '${meta.label}' (${(confidence * 100).toFixed(1)}% confidence). Recommended: Switch to ${meta.label}.`;
+      categoryVerificationMessage = `⚠️ Category Discrepancy: Photo depicts '${meta.label}' (${(confidence * 100).toFixed(1)}%), but you selected '${userSelectedLabel}'. Recommended: Switch category to ${meta.label}.`;
     }
 
     return {

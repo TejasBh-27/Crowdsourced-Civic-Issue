@@ -291,17 +291,17 @@ def softmax(x):
 def detect_human_portrait(pil_img: Image.Image) -> tuple[bool, bool, bool, float, float, float]:
     """
     Intelligently distinguish between:
-    1. A genuine Personal Portrait / Selfie (large human face in upper-center, no civic defect)
-    2. A legitimate civic photo with hands/arms/gloves (e.g. sorting waste, holding trash bag, pointing at a pothole)
+    1. A genuine Personal Portrait / Selfie (large human face occupying the frame with NO civic elements)
+    2. A legitimate civic photo of road, vehicles, buildings, signs, or municipal defects.
     
     Returns:
       (is_portrait, is_garbage, is_pothole, total_skin_pct, face_skin_pct, fg_blue_bag_pct)
     """
     arr = np.array(pil_img.convert("RGB"))
     h, w, _ = arr.shape
-    r = arr[:, :, 0].astype(int)
-    g = arr[:, :, 1].astype(int)
-    b = arr[:, :, 2].astype(int)
+    r = arr[:, :, 0].astype(float) / 255.0
+    g = arr[:, :, 1].astype(float) / 255.0
+    b = arr[:, :, 2].astype(float) / 255.0
 
     # 1. Skin tone in YCrCb
     ycbcr = cv2.cvtColor(arr, cv2.COLOR_RGB2YCrCb)
@@ -310,50 +310,62 @@ def detect_human_portrait(pil_img: Image.Image) -> tuple[bool, bool, bool, float
     skin = (cr >= 133) & (cr <= 173) & (cb >= 77) & (cb <= 127)
     total_skin_pct = float(np.mean(skin) * 100)
 
-    # Face zone: upper-center (y in 12%-55%, x in 25%-75%) - where facial features reside in selfies
-    face_crop = skin[int(h * 0.12):int(h * 0.55), int(w * 0.25):int(w * 0.75)]
+    # Face zone: upper-center (y in 15%-55%, x in 25%-75%)
+    face_crop = skin[int(h * 0.15):int(h * 0.55), int(w * 0.25):int(w * 0.75)]
     face_skin_pct = float(np.mean(face_crop) * 100) if face_crop.size > 0 else 0.0
 
-    # 2. Foreground Blue Bag / Trash Plastic (y > 20% of image height)
-    hsv = cv2.cvtColor(arr, cv2.COLOR_RGB2HSV)
-    fg_hsv = hsv[int(h * 0.20):, :]
-    fg_hue, fg_sat, fg_val = fg_hsv[:, :, 0], fg_hsv[:, :, 1], fg_hsv[:, :, 2]
-
-    # Vivid blue trash bag (hue in [100, 128], sat >= 85, val >= 70)
-    blue_bag = (fg_hue >= 100) & (fg_hue <= 128) & (fg_sat >= 85) & (fg_val >= 70)
-    fg_blue_bag_pct = float(np.mean(blue_bag) * 100)
-
-    # Green bin / garbage sack (hue in [35, 85], sat >= 65, val >= 55)
-    green_bag = (fg_hue >= 35) & (fg_hue <= 85) & (fg_sat >= 65) & (fg_val >= 55)
-    fg_green_bag_pct = float(np.mean(green_bag) * 100)
-
-    # Dark waste / black plastic bags
-    dark_waste = (fg_val < 50) & (fg_sat < 65)
-    dark_waste_pct = float(np.mean(dark_waste) * 100)
-
-    # High-frequency trash clutter texture
-    gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-    center_region = gray[int(h * 0.2):int(h * 0.8), int(w * 0.2):int(w * 0.8)]
-    center_lap_var = float(cv2.Laplacian(center_region, cv2.CV_64F).var())
-
-    # 3. Road / Pothole indicators
+    # 2. Road Asphalt
     diff_rg = np.abs(r - g)
     diff_rb = np.abs(r - b)
-    asphalt = (diff_rg < 22) & (diff_rb < 22) & (r > 35) & (r < 175)
+    asphalt = (diff_rg < 0.08) & (diff_rb < 0.08) & (r > 0.15) & (r < 0.65)
     asphalt_pct = float(np.mean(asphalt) * 100)
 
-    # 4. Civic classifications
-    is_garbage = (
-        (fg_blue_bag_pct >= 3.0) or
-        (fg_green_bag_pct >= 6.0) or
-        (fg_blue_bag_pct >= 1.5 and center_lap_var > 700) or
-        (dark_waste_pct >= 14.0 and center_lap_var > 600)
-    )
-    is_pothole = (asphalt_pct >= 28.0)
+    # 3. Vehicles & Traffic Signs (No-parking signs, car body panels, windshields)
+    hsv = cv2.cvtColor(arr, cv2.COLOR_RGB2HSV)
+    hue, sat, val = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
+    gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
 
-    # 5. Selfie classification:
-    # A selfie requires high face skin in the upper face zone AND no civic defect features!
-    is_portrait = (face_skin_pct >= 28.0) and not is_garbage and not is_pothole
+    red_mask = ((hue < 12) | (hue > 168)) & (sat > 70) & (val > 60)
+    red_clean = cv2.morphologyEx(red_mask.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3,3), np.uint8))
+    cnts, _ = cv2.findContours(red_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    has_real_sign = any(cv2.contourArea(c) > 350 for c in cnts)
+
+    mean_k = np.ones((15, 15), np.float32) / 225.0
+    loc_m = cv2.filter2D(gray.astype(np.float32), -1, mean_k)
+    loc_sq = cv2.filter2D((gray.astype(np.float32))**2, -1, mean_k)
+    loc_var = loc_sq - loc_m**2
+
+    veh_zone = slice(int(h * 0.35), h)
+    smooth_veh = (loc_var[veh_zone, :] < 130) & (val[veh_zone, :] > 85)
+    veh_panel_pct = float(np.mean(smooth_veh) * 100)
+
+    is_vehicle_scene = has_real_sign or (veh_panel_pct > 15.0)
+
+    # 4. Water spray & pipes
+    kernel5 = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    dilated = cv2.dilate(gray, kernel5)
+    eroded = cv2.erode(gray, kernel5)
+    droplet_gradient = dilated - eroded
+    droplet_mist = (droplet_gradient > 65) & (val > 120) & (sat < 50)
+    droplet_pct = float(np.mean(droplet_mist) * 100)
+    is_water_scene = droplet_pct > 6.0
+
+    # 5. Garbage / Waste bags
+    blue_bag = (hue >= 100) & (hue <= 128) & (sat >= 80) & (val >= 65)
+    fg_blue_bag_pct = float(np.mean(blue_bag) * 100)
+    green_bag = (hue >= 35) & (hue <= 85) & (sat >= 60) & (val >= 50)
+    fg_green_bag_pct = float(np.mean(green_bag) * 100)
+    is_garbage = (fg_blue_bag_pct >= 2.5) or (fg_green_bag_pct >= 4.0)
+
+    # 6. Potholes
+    cavity = val[int(h * 0.35):, :] < 40
+    is_pothole = (asphalt_pct >= 25.0) and (np.mean(cavity) > 0.04)
+
+    # Any civic defect or urban scene element means it's NOT a portrait/selfie
+    is_civic_scene = (asphalt_pct > 15.0) or is_vehicle_scene or is_water_scene or is_garbage or is_pothole
+
+    # A portrait strictly requires extreme facial skin dominance (> 55%) AND zero civic scene elements
+    is_portrait = (face_skin_pct >= 55.0) and not is_civic_scene
 
     return is_portrait, is_garbage, is_pothole, total_skin_pct, face_skin_pct, fg_blue_bag_pct
 
@@ -383,20 +395,18 @@ def analyze_civic_category(
 
     # 1. Multi-Modal Filename Analysis
     fn_lower = (filename or "").lower().replace("_", "-").replace(".", " ")
-
-    # Decisive Filename tokens (direct human-labeled ground truth)
-    if any(tok in fn_lower for tok in ["street-light", "streetlight", "street light", "lamp", "led", "luminaire", "lantern", "lighting", "fixture", "bulb", "pole"]):
-        scores["street_light"] += 15.0
+    if any(tok in fn_lower for tok in ["street-light", "streetlight", "street light", "lamp", "led", "luminaire", "lantern", "lighting"]):
+        scores["street_light"] += 8.0
     if any(tok in fn_lower for tok in ["water", "leak", "leakage", "pipe", "burst", "puddle", "flood", "splash", "hydrant", "supply"]):
-        scores["water"] += 15.0
-    if any(tok in fn_lower for tok in ["garbage", "waste", "trash", "dump", "debris", "litter", "rubbish", "plastic", "bin", "dustbin", "landfill"]):
-        scores["garbage"] += 15.0
-    if any(tok in fn_lower for tok in ["drain", "drainage", "sewer", "sewage", "manhole", "gutter", "overflow", "culvert", "sump"]):
-        scores["drainage"] += 15.0
-    if any(tok in fn_lower for tok in ["parking", "parked", "traffic", "car", "vehicle", "truck", "bike", "congestion", "jam", "scooter", "auto", "van"]):
-        scores["illegal_parking"] += 15.0
-    if any(tok in fn_lower for tok in ["pothole", "potholes", "crater", "crack", "asphalt", "road-damage", "cavity", "rut"]):
-        scores["pothole"] += 15.0
+        scores["water"] += 8.0
+    if any(tok in fn_lower for tok in ["garbage", "waste", "trash", "dump", "debris", "litter", "rubbish", "plastic", "bin", "dustbin"]):
+        scores["garbage"] += 8.0
+    if any(tok in fn_lower for tok in ["drain", "drainage", "sewer", "sewage", "manhole", "gutter", "overflow", "culvert"]):
+        scores["drainage"] += 8.0
+    if any(tok in fn_lower for tok in ["parking", "parked", "traffic", "car", "vehicle", "truck", "bike", "congestion", "jam"]):
+        scores["illegal_parking"] += 8.0
+    if any(tok in fn_lower for tok in ["pothole", "potholes", "crater", "crack", "asphalt", "road-damage", "cavity"]):
+        scores["pothole"] += 8.0
 
     # 2. Trained Random Forest Visual Category Model (civic_vision_category.joblib)
     rf_model, rf_scaler, rf_encoder = load_civic_vision_classifier()
@@ -406,13 +416,13 @@ def analyze_civic_category(
             feats_scaled = rf_scaler.transform(feats.reshape(1, -1))
             rf_probs = rf_model.predict_proba(feats_scaled)[0]
             for cls_name, prob in zip(rf_encoder.classes_, rf_probs):
-                norm_key = cls_name.strip().lower()
+                norm_key = str(cls_name).strip().lower()
                 if norm_key in scores:
-                    scores[norm_key] += float(prob) * 4.0
+                    scores[norm_key] += float(prob) * 16.0
         except Exception as e:
             print(f"[CV ML Warning] Could not score with random forest: {e}")
 
-    # 3. Deep OpenCV Pixel Analysis
+    # 3. Deep OpenCV Multi-Cue Visual Evidence
     arr = np.array(pil_img.convert("RGB"))
     h, w, _ = arr.shape
     r = arr[:, :, 0].astype(float) / 255.0
@@ -423,82 +433,111 @@ def analyze_civic_category(
     hue = hsv[:, :, 0]
     sat = hsv[:, :, 1]
     val = hsv[:, :, 2]
-
     gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-    grad_x = np.abs(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3))
-    grad_y = np.abs(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3))
-    vert_ratio = float(np.mean(grad_x) / (np.mean(grad_y) + 1e-4))
 
-    # Streetlight Pixel Rules:
-    # Night streetlight: dark nocturnal sky + bright luminaire hotspot
-    top_half_val = val[:int(h * 0.45), :]
-    bot_half_val = val[int(h * 0.45):, :]
-    night_sky_pct = float(np.mean(top_half_val < 55) * 100)
-    hotspot_pct = float(np.mean((top_half_val > 210) & (sat[:int(h * 0.45), :] < 80)) * 100)
-
-    # Daylight streetlight: blue open sky (H in [90, 135]) or bright overcast + pole/luminaire fixture
-    top_sky_mask = (hue[:int(h * 0.55), :] >= 90) & (hue[:int(h * 0.55), :] <= 135) & (sat[:int(h * 0.55), :] > 25) & (val[:int(h * 0.55), :] > 80)
-    top_sky_pct = float(np.mean(top_sky_mask) * 100)
-    overcast_sky_pct = float(np.mean((val[:int(h * 0.5), :] > 180) & (sat[:int(h * 0.5), :] < 35)) * 100)
-    dark_fixture_pct = float(np.mean(val[:int(h * 0.7), :] < 90) * 100)
-    has_fixture_or_pole = (vert_ratio > 1.15) or (dark_fixture_pct > 2.0)
-
-    if (night_sky_pct > 30.0 and hotspot_pct > 0.02) or (night_sky_pct > 55.0 and np.mean(val) < 85):
-        scores["street_light"] += 8.0
-    elif (top_sky_pct > 20.0 or overcast_sky_pct > 25.0) and has_fixture_or_pole:
-        scores["street_light"] += 8.5
-
-    # Water Leakage Pixel Rules:
-    # Fluid pooling strictly on the ground (lower 65% of frame, y > 35% height)
-    ground_b = b[int(h * 0.35):, :]
-    ground_r = r[int(h * 0.35):, :]
-    ground_g = g[int(h * 0.35):, :]
-    ground_water_mask = (ground_b > 0.40) & (ground_b > ground_r * 1.20) & (ground_b > ground_g * 1.05) & (ground_b < 0.85)
-    ground_water_pct = float(np.mean(ground_water_mask) * 100)
-
-    wet_road_refl = (sat[int(h * 0.35):, :] < 50) & (val[int(h * 0.35):, :] > 180)
-    wet_refl_pct = float(np.mean(wet_road_refl) * 100)
-
-    # Only count water if fluid is on the road / ground (not blue celestial sky)
-    if top_sky_pct < 25.0 and (ground_water_pct > 3.0 or (wet_refl_pct > 3.0 and ground_water_pct > 0.8)):
-        scores["water"] += 6.5 + min(3.0, ground_water_pct * 0.4)
-
-    # Garbage Dump Pixel Rules:
-    blue_bag_mask = (hue >= 100) & (hue <= 128) & (sat >= 85) & (val >= 70)
-    green_bag_mask = (hue >= 35) & (hue <= 85) & (sat >= 65) & (val >= 55)
-    fg_blue_pct = float(np.mean(blue_bag_mask[int(h * 0.2):, :]) * 100)
-    fg_green_pct = float(np.mean(green_bag_mask[int(h * 0.2):, :]) * 100)
-    color_var = float(np.std(r) * np.std(g) * np.std(b) * 100.0)
-
-    if fg_blue_pct >= 2.5 or fg_green_pct >= 5.0 or color_var > 1.4:
-        scores["garbage"] += 6.5 + min(3.0, color_var * 1.2)
-
-    # Drainage Overflow Pixel Rules:
-    muddy_mask = (r > 0.20) & (g > 0.16) & (b < 0.22) & (r > b * 1.25)
-    muddy_pct = float(np.mean(muddy_mask) * 100)
-    cavity_mask = val[int(h * 0.35):, :] < 35
-    cavity_pct = float(np.mean(cavity_mask) * 100)
-
-    if muddy_pct > 6.0 or (cavity_pct > 14.0 and muddy_pct > 1.8):
-        scores["drainage"] += 6.0 + min(3.0, muddy_pct * 0.3)
-
-    # Traffic / Illegal Parking Pixel Rules:
-    car_paint_mask = (sat[int(h * 0.2):int(h * 0.8), :] > 60) & (val[int(h * 0.2):int(h * 0.8), :] > 75)
-    car_paint_pct = float(np.mean(car_paint_mask) * 100)
-    tire_mask = (val[int(h * 0.5):, :] < 35) & (sat[int(h * 0.5):, :] < 45)
-    tire_pct = float(np.mean(tire_mask) * 100)
-
-    if car_paint_pct > 9.0 and tire_pct > 3.5:
-        scores["illegal_parking"] += 5.5 + min(3.0, car_paint_pct * 0.2)
-
-    # Road Pothole Pixel Rules:
+    # Road Asphalt
     diff_rg = np.abs(r - g)
     diff_rb = np.abs(r - b)
-    asphalt_mask = (diff_rg < 0.09) & (diff_rb < 0.09) & (r > 0.15) & (r < 0.70)
+    asphalt_mask = (diff_rg < 0.08) & (diff_rb < 0.08) & (r > 0.15) & (r < 0.65)
     asphalt_pct = float(np.mean(asphalt_mask) * 100)
 
-    if asphalt_pct > 28.0 and cavity_pct > 3.0:
-        scores["pothole"] += 5.5 + min(2.5, asphalt_pct * 0.05)
+    # Local variance map
+    mean_k = np.ones((15, 15), np.float32) / 225.0
+    loc_m = cv2.filter2D(gray.astype(np.float32), -1, mean_k)
+    loc_sq = cv2.filter2D((gray.astype(np.float32))**2, -1, mean_k)
+    loc_var = loc_sq - loc_m**2
+
+    # A) Traffic & Illegal Parking: Red signs, vehicle body panels, windshields
+    red_mask = ((hue < 12) | (hue > 168)) & (sat > 80) & (val > 65)
+    red_clean = cv2.morphologyEx(red_mask.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3,3), np.uint8))
+    cnts, _ = cv2.findContours(red_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    has_real_sign = False
+    for c in cnts:
+        area = cv2.contourArea(c)
+        if area > 600:
+            bx, by, bw, bh = cv2.boundingRect(c)
+            aspect = bw / float(bh + 1e-5)
+            if 0.5 < aspect < 2.2 and bh > 20 and bw > 20:
+                has_real_sign = True
+                break
+
+    veh_zone = slice(int(h * 0.35), h)
+    smooth_veh = (loc_var[veh_zone, :] < 130) & (val[veh_zone, :] > 85)
+    veh_panel_pct = float(np.mean(smooth_veh) * 100)
+
+    mid_glass = slice(int(h * 0.25), int(h * 0.75))
+    windshield = (val[mid_glass, :] >= 20) & (val[mid_glass, :] <= 90) & (loc_var[mid_glass, :] < 100)
+    windshield_pct = float(np.mean(windshield) * 100)
+
+    edges_canny = cv2.Canny(gray, 60, 160)
+    edge_pct = float(np.mean(edges_canny > 0) * 100)
+
+    mid_gray = gray[int(h * 0.2):int(h * 0.8), :]
+    glass_pct = float(np.mean((mid_gray > 15) & (mid_gray < 85)) * 100)
+
+    red_sign = ((hue < 12) | (hue > 168)) & (sat > 90) & (val > 70)
+    red_sign_pct = float(np.mean(red_sign) * 100)
+
+    sobel_x = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+    sobel_y = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+    horiz_ratio = float(np.mean(np.abs(sobel_x)) / (np.mean(np.abs(sobel_y)) + 1e-5))
+
+    is_traffic_jam = (asphalt_pct > 25.0 and edge_pct > 15.0 and glass_pct > 30.0 and horiz_ratio > 1.2)
+    is_parking_sign = (red_sign_pct > 3.0 and glass_pct > 25.0 and horiz_ratio > 1.05)
+    is_parking_scene = is_traffic_jam or is_parking_sign
+
+    if is_parking_scene:
+        bonus = 8.0
+        if is_traffic_jam:
+            bonus += 6.0
+        if is_parking_sign:
+            bonus += 5.0
+        scores["illegal_parking"] += bonus
+
+    # B) Water Leakage & Burst Pipe: Spray mist, central pipe fixture, specular pooling
+    pipe_zone = arr[int(h*0.3):int(h*0.85), int(w*0.35):int(w*0.65)]
+    pipe_dark = float(np.mean(cv2.cvtColor(pipe_zone, cv2.COLOR_RGB2GRAY) < 70) * 100)
+    left_bright = float(np.mean(cv2.cvtColor(arr[:, :int(0.4*w)], cv2.COLOR_RGB2GRAY) > 160) * 100)
+    right_bright = float(np.mean(cv2.cvtColor(arr[:, int(0.6*w):], cv2.COLOR_RGB2GRAY) > 160) * 100)
+
+    kernel5 = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    dilated = cv2.dilate(gray, kernel5)
+    eroded = cv2.erode(gray, kernel5)
+    droplet_gradient = dilated - eroded
+    droplet_mist = (droplet_gradient > 65) & (val > 120) & (sat < 50)
+    droplet_pct = float(np.mean(droplet_mist) * 100)
+
+    ground_specular = (val[int(h*0.45):, :] > 200) & (sat[int(h*0.45):, :] < 45)
+    specular_pct = float(np.mean(ground_specular) * 100)
+
+    is_water_spray = (not is_parking_scene) and (
+        (pipe_dark > 18.0 and droplet_pct > 5.0) or
+        (droplet_pct > 7.0)
+    )
+
+    if is_water_spray:
+        scores["water"] += 10.0 + min(4.0, droplet_pct * 0.2)
+    elif specular_pct > 6.0 and not is_parking_scene:
+        scores["water"] += 4.5
+
+    # C) Road Potholes: Asphalt cavitation crater
+    cavity = (val[int(h * 0.35):, :] < 40)
+    cavity_pct = float(np.mean(cavity) * 100)
+    if asphalt_pct > 30.0 and cavity_pct > 6.0 and not is_parking_scene and not is_water_spray:
+        scores["pothole"] += 4.0
+
+    # D) Garbage Dump: Multi-color plastic bags & waste clutter
+    blue_bag = (hue >= 100) & (hue <= 128) & (sat >= 80) & (val >= 65)
+    blue_bag_pct = float(np.mean(blue_bag) * 100)
+    if blue_bag_pct > 3.0 and not is_parking_scene and not is_water_spray:
+        scores["garbage"] += 4.0
+
+    # E) Streetlights: Nocturnal lighting or tall day mast
+    top_v = val[:int(h * 0.45), :]
+    night_sky = float(np.mean(top_v < 50) * 100)
+    hotspot = float(np.mean((top_v > 220) & (sat[:int(h * 0.45), :] < 60)) * 100)
+    if (night_sky > 40.0 and hotspot > 0.05) or (night_sky > 70.0):
+        scores["street_light"] += 4.0
 
     # Compute Softmax Normalized Probabilities
     max_score = max(scores.values())

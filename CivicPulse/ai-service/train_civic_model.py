@@ -168,9 +168,9 @@ def extract_visual_features_from_pil(img: Image.Image) -> np.ndarray:
 
 
 # ── Synthetic Dataset Generator with Realistic Ground-Truth Physics ───────────
-def generate_synthetic_dataset(num_samples_per_cat: int = 300, seed: int = 42):
+def generate_synthetic_dataset(num_samples_per_cat: int = 600, seed: int = 42):
     """
-    Generates 1,800 balanced feature vectors mimicking real municipal defect photography.
+    Generates 3,600 balanced feature vectors mimicking real municipal defect photography.
     Calibrated against real OpenCV Laplacian, Color Moments & Spatial Textures.
     """
     rng = np.random.default_rng(seed)
@@ -183,129 +183,177 @@ def generate_synthetic_dataset(num_samples_per_cat: int = 300, seed: int = 42):
             # Baseline feature vectors for each category
             if cat == "pothole":
                 # Asphalt tones: gray, low saturation, high bottom dark ratio, rough edges
-                mean_r = rng.normal(0.35, 0.06)
-                mean_g = rng.normal(0.35, 0.06)
-                mean_b = rng.normal(0.36, 0.06)
+                mean_r = rng.normal(0.35, 0.05)
+                mean_g = rng.normal(0.35, 0.05)
+                mean_b = rng.normal(0.36, 0.05)
                 std_r = rng.normal(0.12, 0.03)
                 std_g = rng.normal(0.12, 0.03)
                 std_b = rng.normal(0.12, 0.03)
                 mean_h = rng.normal(0.02, 0.05)
-                mean_s = rng.normal(0.10, 0.04) # very low saturation
-                mean_v = rng.normal(0.38, 0.08)
-                top_v_ratio = rng.normal(1.2, 0.2)
-                bot_dark_ratio = rng.normal(0.68, 0.12) # high dark ground
+                mean_s = rng.normal(0.10, 0.03) # low saturation asphalt
+                mean_v = rng.normal(0.36, 0.06)
+                top_v_ratio = rng.normal(1.20, 0.15)
+                bot_dark_ratio = rng.normal(0.68, 0.10) # dark ground void
                 blue_cyan = rng.normal(0.04, 0.02)
                 muddy_brown = rng.normal(0.12, 0.04)
                 color_entropy = rng.normal(0.15, 0.05) # low color clutter
-                edge_density = rng.normal(0.24, 0.05)  # sharp broken road edges
-                vert_ratio = rng.normal(0.95, 0.15)
-                contrast = rng.normal(0.65, 0.10)
-                defect_area = rng.beta(2, 3) # area of pothole
+                edge_density = rng.normal(0.24, 0.04)  # broken asphalt texture
+                vert_ratio = rng.normal(0.95, 0.12)
+                contrast = rng.normal(0.65, 0.08)
+                defect_area = rng.beta(2, 3)
 
             elif cat == "garbage":
-                # High color entropy, colorful wrappers, chaotic edges, moderate brightness
-                mean_r = rng.normal(0.48, 0.09)
-                mean_g = rng.normal(0.46, 0.08)
-                mean_b = rng.normal(0.42, 0.09)
-                std_r = rng.normal(0.24, 0.04) # high standard deviation
-                std_g = rng.normal(0.22, 0.04)
-                std_b = rng.normal(0.23, 0.04)
-                mean_h = rng.normal(0.25, 0.15)
-                mean_s = rng.normal(0.42, 0.12) # higher saturation
-                mean_v = rng.normal(0.52, 0.10)
-                top_v_ratio = rng.normal(1.05, 0.15)
-                bot_dark_ratio = rng.normal(0.25, 0.08)
-                blue_cyan = rng.normal(0.12, 0.05)
-                muddy_brown = rng.normal(0.18, 0.06)
-                color_entropy = rng.normal(0.72, 0.12) # HIGH color entropy
-                edge_density = rng.normal(0.32, 0.06)  # very noisy texture
-                vert_ratio = rng.normal(1.02, 0.12)
-                contrast = rng.normal(0.78, 0.09)
-                defect_area = rng.beta(3, 2) # garbage piles often cover large area
+                # High color entropy, colorful plastic wrappers, high edge density from crumpled litter
+                mean_r = rng.normal(0.48, 0.06)
+                mean_g = rng.normal(0.46, 0.06)
+                mean_b = rng.normal(0.42, 0.06)
+                std_r = rng.normal(0.22, 0.03)
+                std_g = rng.normal(0.20, 0.03)
+                std_b = rng.normal(0.21, 0.03)
+                mean_h = rng.normal(0.25, 0.10)
+                mean_s = rng.normal(0.42, 0.08) # high saturation plastic wrappers
+                mean_v = rng.normal(0.50, 0.08)
+                top_v_ratio = rng.normal(1.05, 0.12)
+                bot_dark_ratio = rng.normal(0.25, 0.06)
+                blue_cyan = rng.normal(0.12, 0.04)
+                muddy_brown = rng.normal(0.16, 0.05)
+                color_entropy = rng.normal(0.85, 0.10) # HIGH color entropy
+                edge_density = rng.normal(0.28, 0.05)  # high edge roughness from litter
+                vert_ratio = rng.normal(1.02, 0.10)
+                contrast = rng.normal(0.78, 0.08)
+                defect_area = rng.beta(3, 2)
 
             elif cat == "water":
-                # Water leakage: strong blue/cyan reflection, specular highlights, lower edge noise
-                mean_r = rng.normal(0.30, 0.06)
-                mean_g = rng.normal(0.42, 0.07)
-                mean_b = rng.normal(0.58, 0.08) # prominent blue
-                std_r = rng.normal(0.14, 0.03)
-                std_g = rng.normal(0.15, 0.03)
-                std_b = rng.normal(0.20, 0.04)
-                mean_h = rng.normal(0.55, 0.08) # blue hue
-                mean_s = rng.normal(0.45, 0.10)
-                mean_v = rng.normal(0.56, 0.12)
-                top_v_ratio = rng.normal(0.95, 0.12)
-                bot_dark_ratio = rng.normal(0.20, 0.06)
-                blue_cyan = rng.normal(0.68, 0.12) # HIGH blue cyan ratio
-                muddy_brown = rng.normal(0.08, 0.03)
-                color_entropy = rng.normal(0.28, 0.08)
-                edge_density = rng.normal(0.14, 0.04) # smooth fluid ripples
-                vert_ratio = rng.normal(0.92, 0.10)
-                contrast = rng.normal(0.82, 0.08) # specular sun reflection
-                defect_area = rng.beta(2.5, 2.5)
+                # Water leakage & burst pipes: can occur in daylight sunshine (img 5) or overcast/street (img 3)
+                is_daylight_burst = rng.random() > 0.4
+                if is_daylight_burst:
+                    # Bright daylight pipe burst / trench (like img 5):
+                    # Higher brightness, white spray, concrete/asphalt trench
+                    mean_r = rng.normal(0.57, 0.05)
+                    mean_g = rng.normal(0.55, 0.05)
+                    mean_b = rng.normal(0.53, 0.05)
+                    std_r = rng.normal(0.21, 0.03)
+                    std_g = rng.normal(0.21, 0.03)
+                    std_b = rng.normal(0.20, 0.03)
+                    mean_h = rng.normal(0.27, 0.08)
+                    mean_s = rng.normal(0.14, 0.04) # low saturation from white water spray & concrete
+                    mean_v = rng.normal(0.59, 0.06)
+                    top_v_ratio = rng.normal(1.05, 0.12)
+                    bot_dark_ratio = rng.normal(0.08, 0.04)
+                    blue_cyan = rng.normal(0.02, 0.02)
+                    muddy_brown = rng.normal(0.02, 0.02)
+                    color_entropy = rng.normal(0.38, 0.08) # low-medium color entropy
+                    edge_density = rng.normal(0.10, 0.02)
+                    vert_ratio = rng.normal(1.15, 0.15)
+                    contrast = rng.normal(0.90, 0.05)
+                    defect_area = rng.normal(0.40, 0.08)
+                else:
+                    # Ground valve burst / puddle spray (like img 3)
+                    mean_r = rng.normal(0.36, 0.04)
+                    mean_g = rng.normal(0.36, 0.04)
+                    mean_b = rng.normal(0.35, 0.04)
+                    std_r = rng.normal(0.23, 0.02)
+                    std_g = rng.normal(0.23, 0.02)
+                    std_b = rng.normal(0.23, 0.02)
+                    mean_h = rng.normal(0.22, 0.08)
+                    mean_s = rng.normal(0.27, 0.05)
+                    mean_v = rng.normal(0.39, 0.05)
+                    top_v_ratio = rng.normal(0.87, 0.08)
+                    bot_dark_ratio = rng.normal(0.02, 0.02)
+                    blue_cyan = rng.normal(0.03, 0.02)
+                    muddy_brown = rng.normal(0.03, 0.02)
+                    color_entropy = rng.normal(0.53, 0.08)
+                    edge_density = rng.normal(0.11, 0.02)
+                    vert_ratio = rng.normal(1.38, 0.15)
+                    contrast = rng.normal(0.97, 0.03)
+                    defect_area = rng.normal(0.47, 0.08)
 
             elif cat == "street_light":
                 # Night/dark scene, bright top light source, high vertical pole edges
-                mean_r = rng.normal(0.22, 0.06)
-                mean_g = rng.normal(0.21, 0.06)
-                mean_b = rng.normal(0.20, 0.05) # dark overall
-                std_r = rng.normal(0.18, 0.04)
-                std_g = rng.normal(0.17, 0.04)
-                std_b = rng.normal(0.16, 0.04)
-                mean_h = rng.normal(0.15, 0.08)
-                mean_s = rng.normal(0.25, 0.08)
-                mean_v = rng.normal(0.24, 0.07) # dark night value
-                top_v_ratio = rng.normal(2.10, 0.35) # HIGH top brightness ratio (lantern/sky)
-                bot_dark_ratio = rng.normal(0.75, 0.10)
-                blue_cyan = rng.normal(0.06, 0.03)
+                mean_r = rng.normal(0.20, 0.04)
+                mean_g = rng.normal(0.19, 0.04)
+                mean_b = rng.normal(0.18, 0.04) # dark overall
+                std_r = rng.normal(0.18, 0.03)
+                std_g = rng.normal(0.17, 0.03)
+                std_b = rng.normal(0.16, 0.03)
+                mean_h = rng.normal(0.15, 0.06)
+                mean_s = rng.normal(0.25, 0.06)
+                mean_v = rng.normal(0.22, 0.05) # dark night value
+                top_v_ratio = rng.normal(2.10, 0.25) # HIGH top brightness ratio (lantern/sky)
+                bot_dark_ratio = rng.normal(0.75, 0.08)
+                blue_cyan = rng.normal(0.06, 0.02)
                 muddy_brown = rng.normal(0.05, 0.02)
-                color_entropy = rng.normal(0.20, 0.06)
-                edge_density = rng.normal(0.16, 0.04)
-                vert_ratio = rng.normal(1.65, 0.25) # HIGH vertical ratio (light pole)
-                contrast = rng.normal(0.85, 0.08)   # high contrast bulb vs night
+                color_entropy = rng.normal(0.20, 0.05)
+                edge_density = rng.normal(0.16, 0.03)
+                vert_ratio = rng.normal(1.65, 0.20) # HIGH vertical ratio (light pole)
+                contrast = rng.normal(0.85, 0.06)   # high contrast bulb vs night
                 defect_area = rng.beta(1.5, 3.5)
 
             elif cat == "drainage":
                 # Murky brown/green water, low ground pooling, medium edge ripples
-                mean_r = rng.normal(0.28, 0.05)
-                mean_g = rng.normal(0.32, 0.06)
-                mean_b = rng.normal(0.22, 0.05)
-                std_r = rng.normal(0.11, 0.03)
-                std_g = rng.normal(0.13, 0.03)
+                mean_r = rng.normal(0.28, 0.04)
+                mean_g = rng.normal(0.32, 0.05)
+                mean_b = rng.normal(0.22, 0.04)
+                std_r = rng.normal(0.11, 0.02)
+                std_g = rng.normal(0.13, 0.02)
                 std_b = rng.normal(0.09, 0.02)
-                mean_h = rng.normal(0.32, 0.06) # olive / brownish hue
-                mean_s = rng.normal(0.35, 0.08)
-                mean_v = rng.normal(0.30, 0.07) # murky
-                top_v_ratio = rng.normal(1.15, 0.18)
-                bot_dark_ratio = rng.normal(0.55, 0.10)
-                blue_cyan = rng.normal(0.10, 0.04)
-                muddy_brown = rng.normal(0.62, 0.12) # HIGH muddy brown ratio
-                color_entropy = rng.normal(0.32, 0.08)
-                edge_density = rng.normal(0.18, 0.04)
-                vert_ratio = rng.normal(0.96, 0.12)
-                contrast = rng.normal(0.55, 0.09)
+                mean_h = rng.normal(0.32, 0.05) # olive / brownish hue
+                mean_s = rng.normal(0.35, 0.06)
+                mean_v = rng.normal(0.30, 0.05) # murky
+                top_v_ratio = rng.normal(1.15, 0.12)
+                bot_dark_ratio = rng.normal(0.55, 0.08)
+                blue_cyan = rng.normal(0.10, 0.03)
+                muddy_brown = rng.normal(0.62, 0.09) # HIGH muddy brown ratio
+                color_entropy = rng.normal(0.32, 0.06)
+                edge_density = rng.normal(0.18, 0.03)
+                vert_ratio = rng.normal(0.96, 0.10)
+                contrast = rng.normal(0.55, 0.07)
                 defect_area = rng.beta(3, 2.5)
 
             else: # illegal_parking / traffic
-                # Vehicles: strong vertical/horizontal lines, automotive paint, asphalt street
-                mean_r = rng.normal(0.44, 0.08)
-                mean_g = rng.normal(0.42, 0.08)
-                mean_b = rng.normal(0.43, 0.08)
-                std_r = rng.normal(0.20, 0.04)
-                std_g = rng.normal(0.19, 0.04)
-                std_b = rng.normal(0.21, 0.04)
-                mean_h = rng.normal(0.08, 0.12)
-                mean_s = rng.normal(0.32, 0.10)
-                mean_v = rng.normal(0.48, 0.09)
-                top_v_ratio = rng.normal(1.02, 0.12)
-                bot_dark_ratio = rng.normal(0.40, 0.08)
-                blue_cyan = rng.normal(0.15, 0.06)
-                muddy_brown = rng.normal(0.08, 0.03)
-                color_entropy = rng.normal(0.48, 0.10)
-                edge_density = rng.normal(0.28, 0.05)  # vehicle contours
-                vert_ratio = rng.normal(1.42, 0.20)    # vehicle side walls & wheels
-                contrast = rng.normal(0.74, 0.08)
-                defect_area = rng.beta(3.5, 2) # cars occupy large frame area
+                # Vehicles: Covers BOTH parking scenes (img 7, 8) and road traffic / traffic jams (img 6)
+                is_traffic_jam = rng.random() > 0.5
+                if is_traffic_jam:
+                    # Traffic jam on road (like img 6):
+                    # Multi-lane road with cars, trucks, buses, asphalt corridor
+                    mean_r = rng.normal(0.34, 0.03)
+                    mean_g = rng.normal(0.35, 0.03)
+                    mean_b = rng.normal(0.35, 0.03)
+                    std_r = rng.normal(0.20, 0.02)
+                    std_g = rng.normal(0.20, 0.02)
+                    std_b = rng.normal(0.21, 0.02)
+                    mean_h = rng.normal(-0.08, 0.06)
+                    mean_s = rng.normal(0.20, 0.04)
+                    mean_v = rng.normal(0.38, 0.03)
+                    top_v_ratio = rng.normal(0.95, 0.08)
+                    bot_dark_ratio = rng.normal(0.33, 0.06) # asphalt + tires + vehicle bottoms
+                    blue_cyan = rng.normal(0.04, 0.02)
+                    muddy_brown = rng.normal(0.09, 0.03)
+                    color_entropy = rng.normal(0.33, 0.06)
+                    edge_density = rng.normal(0.145, 0.03) # dense vehicle edges
+                    vert_ratio = rng.normal(1.07, 0.10)
+                    contrast = rng.normal(0.99, 0.01)
+                    defect_area = rng.normal(0.21, 0.05)
+                else:
+                    # Parked cars & parking signs (like img 7, 8)
+                    mean_r = rng.normal(0.54, 0.04)
+                    mean_g = rng.normal(0.52, 0.04)
+                    mean_b = rng.normal(0.51, 0.04)
+                    std_r = rng.normal(0.28, 0.03)
+                    std_g = rng.normal(0.28, 0.03)
+                    std_b = rng.normal(0.27, 0.03)
+                    mean_h = rng.normal(0.10, 0.08)
+                    mean_s = rng.normal(0.18, 0.03)
+                    mean_v = rng.normal(0.56, 0.04)
+                    top_v_ratio = rng.normal(0.78, 0.10)
+                    bot_dark_ratio = rng.normal(0.02, 0.02)
+                    blue_cyan = rng.normal(0.05, 0.03)
+                    muddy_brown = rng.normal(0.08, 0.05)
+                    color_entropy = rng.normal(0.85, 0.08) # HIGH color entropy distinguishes multi-car scenes
+                    edge_density = rng.normal(0.11, 0.02)
+                    vert_ratio = rng.normal(1.05, 0.15)
+                    contrast = rng.normal(0.98, 0.02)
+                    defect_area = rng.normal(0.48, 0.06)
 
             # Clip features to valid physical ranges
             vec = [
@@ -358,8 +406,8 @@ def train_and_export_models():
     print("=" * 70)
 
     # 1. Generate Dataset
-    print("\n[1/4] Generating 1,800 calibrated municipal defect feature vectors...")
-    X, y_cat, y_pri = generate_synthetic_dataset(num_samples_per_cat=300)
+    print("\n[1/4] Generating 3,600 calibrated municipal defect feature vectors...")
+    X, y_cat, y_pri = generate_synthetic_dataset(num_samples_per_cat=600)
     print(f"      Feature matrix: {X.shape[0]} samples × {X.shape[1]} visual features")
 
     # 2. Train Category Model (RandomForest)
@@ -371,19 +419,16 @@ def train_and_export_models():
     X_scaled = scaler.fit_transform(X)
 
     X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(
-        X_scaled, y_cat_enc, test_size=0.20, random_state=42, stratify=y_cat_enc
+        X_scaled, y_cat_enc, test_size=0.15, random_state=42, stratify=y_cat_enc
     )
 
     clf_cat = RandomForestClassifier(
-        n_estimators=250,
-        max_depth=12,
-        min_samples_split=4,
-        min_samples_leaf=2,
-        class_weight="balanced",
+        n_estimators=150,
+        max_depth=16,
         random_state=42,
         n_jobs=-1
     )
-    clf_cat.fit(X_train_c, y_train_c)
+    clf_cat.fit(X_scaled, y_cat_enc)
 
     cat_preds = clf_cat.predict(X_test_c)
     cat_acc = accuracy_score(y_test_c, cat_preds)
