@@ -4,11 +4,12 @@
   "private": true,
   "description": "CivicPulse Root Workspace Runner",
   "scripts": {
-    "dev": "npm --prefix CivicPulse run dev",
-    "dev:frontend": "npm --prefix CivicPulse run dev",
+    "dev": "node dev.js",
+    "dev:frontend": "npm --prefix CivicPulse run dev:vite",
     "dev:backend": "npm --prefix CivicPulse/backend run dev",
+    "dev:ai": "powershell -Command \"Set-Location CivicPulse/ai-service; python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload\"",
     "build:frontend": "npm --prefix CivicPulse run build",
     "build:backend": "npm --prefix CivicPulse/backend run build",
-    "start": "start-all.bat"
+    "start": "node dev.js"
   }
 }

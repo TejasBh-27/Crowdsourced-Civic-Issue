@@ -124,22 +124,6 @@ export default function LoginScreen({ navigation, route }) {
     await dispatch(loginUser({ identifier: cleanId, password, role: effectiveRole }));
   };
 
-  const handleFillDemo = (demoRole) => {
-    dispatch(clearAuthError());
-    setValidationError('');
-    setNotRegisteredAlert(null);
-    setTouched(false);
-    if (demoRole === 'officer') {
-      dispatch(setRole('officer'));
-      setIdentifier('rajesh.officer@civicpulse.gov');
-      setPassword('password123');
-    } else {
-      dispatch(setRole('citizen'));
-      setIdentifier('9545286810');
-      setPassword('password123');
-    }
-  };
-
   const navigateToRegister = (prefillId = '') => {
     dispatch(clearAuthError());
     setNotRegisteredAlert(null);
@@ -511,69 +495,6 @@ export default function LoginScreen({ navigation, route }) {
             </div>
           </form>
         </Card>
-
-        {/* Demo Fast-fill Card */}
-        <div style={{
-          backgroundColor: '#EFF6FF',
-          borderRadius: '14px',
-          padding: '14px 16px',
-          border: '1px solid #BFDBFE'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '16px' }}>💡</span>
-            <div style={{ fontSize: '12px', fontWeight: '800', color: '#1E40AF' }}>
-              Quick Demo Logins (Already Registered)
-            </div>
-          </div>
-          <div style={{ fontSize: '12px', color: '#1E3A8A', lineHeight: 1.4, marginBottom: '10px' }}>
-            These accounts are already registered in the system. Click to pre-fill and log in:
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={() => handleFillDemo('citizen')}
-              style={{
-                flex: 1,
-                padding: '8px 10px',
-                background: '#FFFFFF',
-                border: '1.5px solid #93C5FD',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: '700',
-                color: '#1D4ED8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px'
-              }}
-            >
-              👤 Citizen (Tejas Bhamre)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFillDemo('officer')}
-              style={{
-                flex: 1,
-                padding: '8px 10px',
-                background: '#FFFFFF',
-                border: '1.5px solid #93C5FD',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: '700',
-                color: '#1D4ED8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px'
-              }}
-            >
-              👮 Fill Officer Demo
-            </button>
-          </div>
-        </div>
-
       </div>
     </div>
   );

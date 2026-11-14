@@ -177,23 +177,6 @@ export default function RegisterScreen({ navigation, route }) {
       <div style={{ flex: 1, padding: '20px 20px 36px', maxWidth: '480px', width: '100%', margin: '0 auto' }}>
 
         {/* Informative notice if redirected from login */}
-        {initialIdentifier && (
-          <div style={{
-            backgroundColor: '#EFF6FF',
-            border: '1px solid #BFDBFE',
-            borderRadius: '12px',
-            padding: '12px 14px',
-            marginBottom: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            <span style={{ fontSize: '20px' }}>ℹ️</span>
-            <div style={{ fontSize: '12px', color: '#1E40AF', lineHeight: 1.4 }}>
-              Setting up registration for <strong>"{initialIdentifier}"</strong>. Complete the details below to activate your account.
-            </div>
-          </div>
-        )}
 
         {/* Role Selector */}
         <Card style={{ marginBottom: '16px' }}>
